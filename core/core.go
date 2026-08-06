@@ -190,8 +190,10 @@ type BrainInput struct {
 	Tools       []Tool
 }
 
-// Brain produces a reply. Pluggable so the framework runs without a live model.
+// Brain produces a reply. Pluggable so the framework runs without a live model, and so a
+// business can pick its model provider from the menu like any other slot.
 type Brain interface {
+	Name() string
 	Respond(ctx context.Context, in BrainInput) (AgentMessage, error)
 }
 

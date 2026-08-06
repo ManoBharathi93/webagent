@@ -1,7 +1,7 @@
-// Package brain holds Brain implementations. Echo is a deterministic, model-free
-// brain so the framework builds, runs, and tests without any LLM credentials or
-// network. Production swaps in the ADK/Gemini brain (which zomato-agent already is):
-// same core.Brain interface, real reasoning over the same candidates and tools.
+// Package brain is the model slot: the menu of reasoning providers. Echo is the built-in,
+// model-free default (deterministic, no credentials or network) so the framework builds,
+// runs, and tests without a live model. The openai provider fronts any OpenAI-compatible
+// gateway (LiteLLM/OpenRouter/local), making the framework model-agnostic.
 package brain
 
 import (
@@ -15,6 +15,8 @@ import (
 // Echo summarizes what a real brain would work from: the instruction in force, the
 // retrieved candidates, and the tools available. Useful for wiring/demo/tests.
 type Echo struct{}
+
+func (Echo) Name() string { return "echo" }
 
 func (Echo) Respond(_ context.Context, in core.BrainInput) (core.AgentMessage, error) {
 	var b strings.Builder

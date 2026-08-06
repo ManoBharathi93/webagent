@@ -22,6 +22,7 @@ type AgentSpec struct {
 	Instruction   string        `json:"instruction"`
 	Brand         Brand         `json:"brand"`
 	Action        ActionSpec    `json:"action"`
+	Model         ComponentSpec `json:"model"`
 	Retrieval     ComponentSpec `json:"retrieval"`
 	Memory        ComponentSpec `json:"memory"`
 	Guardrail     ComponentSpec `json:"guardrail"`

@@ -34,6 +34,7 @@ func main() {
 	}
 	switch os.Args[1] {
 	case "options":
+		printSlot("model", brain.Registry.Options(), brain.Registry.Default())
 		printSlot("retrieval", retrieval.Registry.Options(), retrieval.Registry.Default())
 		printSlot("memory", memory.Registry.Options(), memory.Registry.Default())
 		printSlot("guardrail", guardrail.Registry.Options(), guardrail.Registry.Default())
@@ -41,12 +42,13 @@ func main() {
 		printSlot("presenter", present.Registry.Options(), present.Registry.Default())
 	case "validate":
 		s := mustLoad()
-		a, err := build.Build(s, brain.Echo{}, nil)
+		a, err := build.Build(s, nil)
 		if err != nil {
 			log.Fatalf("build: %v", err)
 		}
 		fmt.Printf("OK  %s (%s)\n", a.Name, s.Business)
 		fmt.Printf("  action    : %s\n", s.Action.MCPURL)
+		fmt.Printf("  model     : %s\n", a.Brain.Name())
 		fmt.Printf("  retrieval : %s\n", a.Retriever.Name())
 		fmt.Printf("  memory    : %s\n", a.Memory.Name())
 		fmt.Printf("  guardrail : %s\n", a.Guardrail.Name())
@@ -55,7 +57,7 @@ func main() {
 		}
 	case "serve":
 		s := mustLoad()
-		a, err := build.Build(s, brain.Echo{}, nil)
+		a, err := build.Build(s, nil)
 		if err != nil {
 			log.Fatalf("build: %v", err)
 		}

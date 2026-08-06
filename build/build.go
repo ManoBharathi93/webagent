@@ -6,6 +6,7 @@ package build
 import (
 	"fmt"
 
+	"github.com/TheAgent-net/webagent/brain"
 	"github.com/TheAgent-net/webagent/channels"
 	"github.com/TheAgent-net/webagent/core"
 	"github.com/TheAgent-net/webagent/guardrail"
@@ -15,10 +16,14 @@ import (
 	"github.com/TheAgent-net/webagent/spec"
 )
 
-// Build resolves the spec's picks across every slot and wires them to the given brain and
-// tools. tools is the action layer (the MCP's tools), supplied by the caller since it
-// depends on live auth.
-func Build(s *spec.AgentSpec, brain core.Brain, tools []core.Tool) (*core.Agent, error) {
+// Build resolves the spec's picks across every slot — including the model (brain) — and
+// wires them together. tools is the action layer (the MCP's tools), supplied by the caller
+// since it depends on live auth. Empty picks resolve to slot defaults.
+func Build(s *spec.AgentSpec, tools []core.Tool) (*core.Agent, error) {
+	br, err := brain.Registry.Get(s.Model.Type, s.Model.Config)
+	if err != nil {
+		return nil, wrap(s, err)
+	}
 	r, err := retrieval.Registry.Get(s.Retrieval.Type, s.Retrieval.Config)
 	if err != nil {
 		return nil, wrap(s, err)
@@ -48,7 +53,7 @@ func Build(s *spec.AgentSpec, brain core.Brain, tools []core.Tool) (*core.Agent,
 	return &core.Agent{
 		Name:        s.Name,
 		Instruction: s.Instruction,
-		Brain:       brain,
+		Brain:       br,
 		Retriever:   r,
 		Memory:      mem,
 		Guardrail:   guard,
