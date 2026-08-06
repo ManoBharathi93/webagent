@@ -19,7 +19,8 @@ nobody forks the core.
 | Guardrail | `Guardrail` | basic, off (+ partner adapters) | basic |
 | Channel | `Channel` | a2a, web, whatsapp, telegram, slack | a2a |
 | Presenter | `Presenter` | text, terminal (QR), web | text |
-| Brain / Action | `Brain` / `Tool` | injected (ADK + MCP in production) | — |
+| Model | `Brain` | echo, openrouter, gateway (any OpenAI-compatible) | echo |
+| Action | `Tool` | injected (MCP in production) | — |
 
 Three audiences, one contract: businesses that **configure** (pick from the menu), businesses
 that **extend** (register a custom provider), and partner companies that **provide** (ship an

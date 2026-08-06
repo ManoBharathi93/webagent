@@ -154,6 +154,8 @@ multi-tenant marketplace identity, deterministic safety, and the declarative spe
 
 - Module path is `github.com/TheAgent-net/webagent` (the AgentNet org). Confirm the final
   repo name; a different name is a one-command rename.
-- Default model gateway: self-hosted (chosen for per-tenant billing) vs managed.
+- Model provider: `openrouter` is the recommended start (one key, breadth); `gateway`
+  fronts a self-hosted LiteLLM when per-tenant billing/routing is needed. Both are one
+  OpenAI-compatible client; default stays `echo` (zero-config, no key).
 - The comprehensive **partner roster per slot**, and the conformance bar to become a default.
 - Spec format: JSON now (zero-dep); YAML for authoring ergonomics later.
