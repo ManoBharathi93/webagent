@@ -1,0 +1,102 @@
+// Command web-agent runs any business's web agent from its declarative spec.
+//
+//	web-agent options            list the slot menus (the palette a business picks from)
+//	web-agent validate <spec>    load a spec and resolve every chosen provider
+//	web-agent serve <spec>       build the agent and run its channels
+//
+// The action layer (MCP tools) is assumed to exist; this CLI runs the framework with the
+// model-free Echo brain and an empty toolset, so the template is demonstrable without live
+// credentials. A production main injects the ADK brain + MCP toolset.
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+	"os/signal"
+
+	"github.com/TheAgent-net/webagent/brain"
+	"github.com/TheAgent-net/webagent/build"
+	"github.com/TheAgent-net/webagent/channels"
+	"github.com/TheAgent-net/webagent/guardrail"
+	"github.com/TheAgent-net/webagent/memory"
+	"github.com/TheAgent-net/webagent/present"
+	"github.com/TheAgent-net/webagent/retrieval"
+	"github.com/TheAgent-net/webagent/spec"
+	"github.com/TheAgent-net/webagent/spi"
+)
+
+func main() {
+	log.SetFlags(0)
+	if len(os.Args) < 2 {
+		usage()
+	}
+	switch os.Args[1] {
+	case "options":
+		printSlot("retrieval", retrieval.Registry.Options(), retrieval.Registry.Default())
+		printSlot("memory", memory.Registry.Options(), memory.Registry.Default())
+		printSlot("guardrail", guardrail.Registry.Options(), guardrail.Registry.Default())
+		printSlot("channel", channels.Registry.Options(), channels.Registry.Default())
+		printSlot("presenter", present.Registry.Options(), present.Registry.Default())
+	case "validate":
+		s := mustLoad()
+		a, err := build.Build(s, brain.Echo{}, nil)
+		if err != nil {
+			log.Fatalf("build: %v", err)
+		}
+		fmt.Printf("OK  %s (%s)\n", a.Name, s.Business)
+		fmt.Printf("  action    : %s\n", s.Action.MCPURL)
+		fmt.Printf("  retrieval : %s\n", a.Retriever.Name())
+		fmt.Printf("  memory    : %s\n", a.Memory.Name())
+		fmt.Printf("  guardrail : %s\n", a.Guardrail.Name())
+		for _, b := range a.Bindings {
+			fmt.Printf("  channel   : %s (presenter=%s)\n", b.Channel.Name(), b.Presenter.Name())
+		}
+	case "serve":
+		s := mustLoad()
+		a, err := build.Build(s, brain.Echo{}, nil)
+		if err != nil {
+			log.Fatalf("build: %v", err)
+		}
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+		defer stop()
+		log.Printf("serving %q with %d channel(s); Ctrl-C to stop", a.Name, len(a.Bindings))
+		if err := a.Run(ctx); err != nil && err != context.Canceled {
+			log.Fatalf("run: %v", err)
+		}
+	default:
+		usage()
+	}
+}
+
+func printSlot(slot string, opts []spi.Descriptor, def string) {
+	fmt.Printf("%s:\n", slot)
+	for _, d := range opts {
+		mark := "  "
+		if d.Name == def {
+			mark = "* " // default
+		}
+		tag := ""
+		if d.Partner {
+			tag = " [partner]"
+		}
+		fmt.Printf("  %s%-10s %s%s\n", mark, d.Name, d.Summary, tag)
+	}
+}
+
+func mustLoad() *spec.AgentSpec {
+	if len(os.Args) < 3 {
+		usage()
+	}
+	s, err := spec.Load(os.Args[2])
+	if err != nil {
+		log.Fatalf("spec: %v", err)
+	}
+	return s
+}
+
+func usage() {
+	fmt.Fprintln(os.Stderr, "usage: web-agent options | validate <spec.json> | serve <spec.json>")
+	os.Exit(2)
+}

@@ -1,0 +1,291 @@
+// Package core defines the web-agent template spine: the slot interfaces every agent is
+// assembled from, independent of any concrete business or provider.
+//
+// Each interface here is a SPI slot (see package spi). Providers — built-in or from
+// partner companies — implement these and register in the slot's registry; a business's
+// spec picks one per slot. The Brain (LLM + instruction) is an interface too, so the
+// framework builds and tests without a live model.
+package core
+
+import (
+	"context"
+	"encoding/json"
+)
+
+// ---------------------------------------------------------------------------
+// Retrieval slot — the knowledge/discovery layer (interface interoperability).
+// ---------------------------------------------------------------------------
+
+// Query is a retrieval request: the user's need plus structured filters.
+type Query struct {
+	Text    string
+	Filters map[string]string
+	UserID  string
+}
+
+// Candidate is a discovery result. STABLE fields only — volatile facts (live price, stock,
+// offers) are re-verified via the action tools before use ("index for recall, live for truth").
+type Candidate struct {
+	ID    string
+	Title string
+	Text  string
+	Attrs map[string]string
+	Score float64
+}
+
+// Retriever discovers candidates for a query.
+type Retriever interface {
+	Name() string
+	Retrieve(ctx context.Context, q Query, k int) ([]Candidate, error)
+}
+
+// ---------------------------------------------------------------------------
+// Memory slot — per-user, cross-session memory (a partner-provided slot).
+// ---------------------------------------------------------------------------
+
+// Scope identifies whose memory this is. Every memory operation is scoped, so a provider
+// (built-in or partner) never mixes tenants or users.
+type Scope struct {
+	UserID    string
+	SessionID string
+	AgentID   string
+}
+
+// MemoryItem is one stored/recalled memory.
+type MemoryItem struct {
+	ID    string
+	Text  string
+	Attrs map[string]string
+	Score float64
+}
+
+// Memory persists and recalls facts across sessions, scoped by user/session/agent.
+type Memory interface {
+	Name() string
+	Remember(ctx context.Context, s Scope, items []MemoryItem) error
+	Recall(ctx context.Context, s Scope, query string, k int) ([]MemoryItem, error)
+}
+
+// ---------------------------------------------------------------------------
+// Guardrail slot — deterministic, code-enforced safety (a partner-provided slot).
+// ---------------------------------------------------------------------------
+
+// Stage is where in a turn a guardrail runs.
+type Stage string
+
+const (
+	StageInput  Stage = "input"  // the user's message, before reasoning
+	StageOutput Stage = "output" // the agent's reply, before it is sent
+	StageAction Stage = "action" // a tool/action about to be executed
+)
+
+// GuardInput is what a guardrail inspects.
+type GuardInput struct {
+	Stage   Stage
+	Content string // message or reply text
+	Action  string // action name, when Stage == StageAction
+	Meta    map[string]string
+}
+
+// Decision is a guardrail's verdict. Allow=false blocks; Content (when set) is a
+// redacted/rewritten replacement to use instead of the original.
+type Decision struct {
+	Allow   bool
+	Reason  string
+	Content string
+}
+
+// Guardrail inspects input, output, and actions and returns an allow/deny/redact decision.
+type Guardrail interface {
+	Name() string
+	Inspect(ctx context.Context, in GuardInput) (Decision, error)
+}
+
+// ---------------------------------------------------------------------------
+// Action slot — grounded capabilities (typically an MCP tool).
+// ---------------------------------------------------------------------------
+
+// Tool is a callable capability exposed to the brain.
+type Tool interface {
+	Name() string
+	Call(ctx context.Context, args map[string]any) (map[string]any, error)
+}
+
+// ---------------------------------------------------------------------------
+// Channel + Presenter slots — transport and rendering (information interoperability).
+// ---------------------------------------------------------------------------
+
+// ElementKind tags a rich element in a reply; presenters decide how to render each.
+type ElementKind string
+
+const (
+	ElementLink   ElementKind = "link"
+	ElementButton ElementKind = "button"
+	ElementImage  ElementKind = "image"
+	ElementQR     ElementKind = "qr"
+)
+
+// Element is one rich piece of a reply.
+type Element struct {
+	Kind  ElementKind
+	Label string
+	Value string
+}
+
+// AgentMessage is a channel-agnostic reply. The brain speaks this; a Presenter lowers it
+// into a channel's native format.
+type AgentMessage struct {
+	Text     string
+	Elements []Element
+}
+
+// Turn is an inbound message from a user on some channel.
+type Turn struct {
+	ChannelUserID string
+	Text          string
+	Meta          map[string]string
+}
+
+// Payload is a channel-native rendering of an AgentMessage.
+type Payload struct {
+	ContentType string
+	Body        string
+}
+
+// Presenter renders a channel-agnostic reply into a channel-native payload. This is where
+// per-channel rendering fidelity lives (the QR problem).
+type Presenter interface {
+	Name() string
+	Render(m AgentMessage) Payload
+}
+
+// Dispatch handles one inbound turn end to end and returns a payload ready to send. The
+// build layer constructs a Dispatch per channel that closes over the agent + the channel's
+// chosen presenter — so channels transport payloads and never depend on a presenter directly.
+type Dispatch func(ctx context.Context, t Turn) (Payload, error)
+
+// Channel is the transport layer: it receives turns and sends rendered payloads.
+type Channel interface {
+	Name() string
+	Start(ctx context.Context, d Dispatch) error
+}
+
+// ChannelBinding pairs a channel with the presenter that renders its replies.
+type ChannelBinding struct {
+	Channel   Channel
+	Presenter Presenter
+}
+
+// ---------------------------------------------------------------------------
+// Brain slot — the reasoning layer (LLM + instruction).
+// ---------------------------------------------------------------------------
+
+// BrainInput is everything the reasoning layer needs for one turn.
+type BrainInput struct {
+	UserID      string
+	Text        string
+	Instruction string
+	Candidates  []Candidate
+	Memories    []MemoryItem
+	Tools       []Tool
+}
+
+// Brain produces a reply. Pluggable so the framework runs without a live model.
+type Brain interface {
+	Respond(ctx context.Context, in BrainInput) (AgentMessage, error)
+}
+
+// ---------------------------------------------------------------------------
+// Agent — the assembled runtime.
+// ---------------------------------------------------------------------------
+
+// Agent ties one brain + the chosen slot providers together and serves them over channels.
+type Agent struct {
+	Name        string
+	Instruction string
+	Brain       Brain
+	Retriever   Retriever
+	Memory      Memory
+	Guardrail   Guardrail
+	Tools       []Tool
+	Bindings    []ChannelBinding
+}
+
+// Handle runs one turn through the full pipeline: input guardrail → retrieve + recall →
+// reason → output guardrail → persist. Missing providers are simply skipped.
+func (a *Agent) Handle(ctx context.Context, t Turn) (AgentMessage, error) {
+	scope := Scope{UserID: t.ChannelUserID}
+
+	if a.Guardrail != nil {
+		if d, err := a.Guardrail.Inspect(ctx, GuardInput{Stage: StageInput, Content: t.Text, Meta: t.Meta}); err == nil && !d.Allow {
+			return AgentMessage{Text: "I can't help with that: " + d.Reason}, nil
+		}
+	}
+
+	var cands []Candidate
+	if a.Retriever != nil {
+		cands, _ = a.Retriever.Retrieve(ctx, Query{Text: t.Text, UserID: t.ChannelUserID}, 8)
+	}
+	var mems []MemoryItem
+	if a.Memory != nil {
+		mems, _ = a.Memory.Recall(ctx, scope, t.Text, 8)
+	}
+
+	msg, err := a.Brain.Respond(ctx, BrainInput{
+		UserID: t.ChannelUserID, Text: t.Text, Instruction: a.Instruction,
+		Candidates: cands, Memories: mems, Tools: a.Tools,
+	})
+	if err != nil {
+		return AgentMessage{}, err
+	}
+
+	if a.Guardrail != nil {
+		if d, gerr := a.Guardrail.Inspect(ctx, GuardInput{Stage: StageOutput, Content: msg.Text, Meta: t.Meta}); gerr == nil {
+			if !d.Allow {
+				return AgentMessage{Text: "(response withheld: " + d.Reason + ")"}, nil
+			}
+			if d.Content != "" {
+				msg.Text = d.Content
+			}
+		}
+	}
+
+	if a.Memory != nil {
+		_ = a.Memory.Remember(ctx, scope, []MemoryItem{{Text: "user: " + t.Text}, {Text: "agent: " + msg.Text}})
+	}
+	return msg, nil
+}
+
+// Run starts every channel binding concurrently and blocks until ctx is done or a channel
+// returns an error. Each channel gets a Dispatch that handles the turn and renders it via
+// that binding's presenter.
+func (a *Agent) Run(ctx context.Context) error {
+	errCh := make(chan error, len(a.Bindings))
+	for _, b := range a.Bindings {
+		b := b
+		d := func(ctx context.Context, t Turn) (Payload, error) {
+			msg, err := a.Handle(ctx, t)
+			if err != nil {
+				return Payload{}, err
+			}
+			return b.Presenter.Render(msg), nil
+		}
+		go func() { errCh <- b.Channel.Start(ctx, d) }()
+	}
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-errCh:
+		return err
+	}
+}
+
+// Decode re-decodes a loosely-typed config map (the spec's per-provider `config`) into a
+// typed struct — the passthrough that lets a provider declare its own config shape.
+func Decode(cfg map[string]any, out any) error {
+	b, err := json.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(b, out)
+}

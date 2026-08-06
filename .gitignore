@@ -1,0 +1,12 @@
+/bin/
+*.log
+
+# secrets — never commit
+.env
+.gcp-creds.json
+service-account*
+*-credentials*
+
+# local runtime state
+.tokens.json
+.profiles.json

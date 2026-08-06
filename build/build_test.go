@@ -1,0 +1,68 @@
+package build
+
+import (
+	"context"
+	"strings"
+	"testing"
+
+	"github.com/TheAgent-net/webagent/brain"
+	"github.com/TheAgent-net/webagent/core"
+	"github.com/TheAgent-net/webagent/spec"
+)
+
+// The whole point of the template: two totally different businesses assemble into a
+// runnable agent from a spec alone, with different provider picks and no new code.
+func TestBuildBothExampleBusinesses(t *testing.T) {
+	for _, path := range []string{"../examples/zomato.json", "../examples/bakery.json"} {
+		s, err := spec.Load(path)
+		if err != nil {
+			t.Fatalf("%s: load: %v", path, err)
+		}
+		a, err := Build(s, brain.Echo{}, nil)
+		if err != nil {
+			t.Fatalf("%s: build: %v", path, err)
+		}
+		if a.Retriever == nil || a.Memory == nil || a.Guardrail == nil || len(a.Bindings) == 0 {
+			t.Fatalf("%s: agent not fully assembled", path)
+		}
+		msg, err := a.Handle(context.Background(), core.Turn{ChannelUserID: "u1", Text: "chocolate croissant"})
+		if err != nil {
+			t.Fatalf("%s: handle: %v", path, err)
+		}
+		if msg.Text == "" {
+			t.Fatalf("%s: empty reply", path)
+		}
+	}
+}
+
+// Empty slot picks resolve to defaults — a minimal spec still yields a working agent.
+func TestBuildResolvesDefaults(t *testing.T) {
+	s := &spec.AgentSpec{
+		Name:     "Minimal",
+		Action:   spec.ActionSpec{MCPURL: "https://x/mcp"},
+		Channels: []spec.ChannelSpec{{Type: "a2a"}}, // no retrieval/memory/guardrail/presenter picks
+	}
+	a, err := Build(s, brain.Echo{}, nil)
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+	if a.Retriever.Name() != "live" || a.Memory.Name() != "session" || a.Guardrail.Name() != "basic" {
+		t.Fatalf("defaults not applied: r=%s m=%s g=%s", a.Retriever.Name(), a.Memory.Name(), a.Guardrail.Name())
+	}
+	if a.Bindings[0].Presenter.Name() != "text" {
+		t.Fatalf("presenter default not applied: %s", a.Bindings[0].Presenter.Name())
+	}
+}
+
+func TestBuildRejectsUnknownProvider(t *testing.T) {
+	s := &spec.AgentSpec{
+		Name:      "Broken",
+		Action:    spec.ActionSpec{MCPURL: "https://x/mcp"},
+		Retrieval: spec.ComponentSpec{Type: "does-not-exist"},
+		Channels:  []spec.ChannelSpec{{Type: "web", Presenter: "text"}},
+	}
+	_, err := Build(s, brain.Echo{}, nil)
+	if err == nil || !strings.Contains(err.Error(), "unknown retrieval provider") {
+		t.Fatalf("expected unknown-provider error, got %v", err)
+	}
+}
