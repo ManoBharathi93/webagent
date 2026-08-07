@@ -211,10 +211,12 @@ type Brain interface {
 // Observability slot — a per-turn trace emitted to an Observer.
 // ---------------------------------------------------------------------------
 
-// Span is one timed step within a turn (e.g. "retrieve", "reason", "guard.output").
+// Span is one timed step within a turn (e.g. "retrieve", "reason", "guard.output"). Err is
+// non-empty when that step errored — so a step failure is observable rather than swallowed.
 type Span struct {
 	Name     string
 	Duration time.Duration
+	Err      string
 }
 
 // TurnTrace is the observable record of one Handle call. Field names align with the
@@ -277,11 +279,17 @@ func (a *Agent) Handle(ctx context.Context, t Turn) (msg AgentMessage, err error
 
 	scope := Scope{UserID: t.ChannelUserID}
 
+	// Input guardrail. Fail CLOSED: if the guardrail itself errors, deny rather than let
+	// unvetted input through. A guardrail error is recorded on the span, not swallowed.
 	if a.Guardrail != nil {
 		s := time.Now()
 		d, gerr := a.Guardrail.Inspect(ctx, GuardInput{Stage: StageInput, Content: t.Text, Meta: t.Meta})
-		tr.Spans = append(tr.Spans, Span{Name: "guard.input", Duration: time.Since(s)})
-		if gerr == nil && !d.Allow {
+		tr.Spans = append(tr.Spans, span("guard.input", s, gerr))
+		if gerr != nil {
+			tr.Blocked = true
+			return AgentMessage{Text: "I can't process that safely right now."}, nil
+		}
+		if !d.Allow {
 			tr.Blocked = true
 			return AgentMessage{Text: "I can't help with that: " + d.Reason}, nil
 		}
@@ -290,45 +298,62 @@ func (a *Agent) Handle(ctx context.Context, t Turn) (msg AgentMessage, err error
 	var cands []Candidate
 	if a.Retriever != nil {
 		s := time.Now()
-		cands, _ = a.Retriever.Retrieve(ctx, Query{Text: t.Text, UserID: t.ChannelUserID}, 8)
-		tr.Spans = append(tr.Spans, Span{Name: "retrieve", Duration: time.Since(s)})
+		var rerr error
+		cands, rerr = a.Retriever.Retrieve(ctx, Query{Text: t.Text, UserID: t.ChannelUserID}, 8)
+		tr.Spans = append(tr.Spans, span("retrieve", s, rerr))
 	}
 	var mems []MemoryItem
 	if a.Memory != nil {
 		s := time.Now()
-		mems, _ = a.Memory.Recall(ctx, scope, t.Text, 8)
-		tr.Spans = append(tr.Spans, Span{Name: "recall", Duration: time.Since(s)})
+		var merr error
+		mems, merr = a.Memory.Recall(ctx, scope, t.Text, 8)
+		tr.Spans = append(tr.Spans, span("recall", s, merr))
 	}
 
-	reason := time.Now()
+	rs := time.Now()
 	msg, err = a.Brain.Respond(ctx, BrainInput{
 		UserID: t.ChannelUserID, Text: t.Text, Instruction: a.Instruction,
 		Candidates: cands, Memories: mems, Tools: a.Tools,
 	})
-	tr.Spans = append(tr.Spans, Span{Name: "reason", Duration: time.Since(reason)})
+	tr.Spans = append(tr.Spans, span("reason", rs, err))
 	if err != nil {
 		return AgentMessage{}, err
 	}
 
+	// Output guardrail. Fail CLOSED: on error, withhold the response rather than emit
+	// something unvetted.
 	if a.Guardrail != nil {
 		s := time.Now()
 		d, gerr := a.Guardrail.Inspect(ctx, GuardInput{Stage: StageOutput, Content: msg.Text, Meta: t.Meta})
-		tr.Spans = append(tr.Spans, Span{Name: "guard.output", Duration: time.Since(s)})
-		if gerr == nil {
-			if !d.Allow {
-				tr.Blocked = true
-				return AgentMessage{Text: "(response withheld: " + d.Reason + ")"}, nil
-			}
-			if d.Content != "" {
-				msg.Text = d.Content
-			}
+		tr.Spans = append(tr.Spans, span("guard.output", s, gerr))
+		if gerr != nil {
+			tr.Blocked = true
+			return AgentMessage{Text: "(response withheld)"}, nil
+		}
+		if !d.Allow {
+			tr.Blocked = true
+			return AgentMessage{Text: "(response withheld: " + d.Reason + ")"}, nil
+		}
+		if d.Content != "" {
+			msg.Text = d.Content
 		}
 	}
 
 	if a.Memory != nil {
-		_ = a.Memory.Remember(ctx, scope, []MemoryItem{{Text: "user: " + t.Text}, {Text: "agent: " + msg.Text}})
+		s := time.Now()
+		rerr := a.Memory.Remember(ctx, scope, []MemoryItem{{Text: "user: " + t.Text}, {Text: "agent: " + msg.Text}})
+		tr.Spans = append(tr.Spans, span("persist", s, rerr))
 	}
 	return msg, nil
+}
+
+// span builds a timed Span, recording err (if any) so a failed step is observable.
+func span(name string, start time.Time, err error) Span {
+	sp := Span{Name: name, Duration: time.Since(start)}
+	if err != nil {
+		sp.Err = err.Error()
+	}
+	return sp
 }
 
 // Run starts every channel binding concurrently and blocks until ctx is done or a channel

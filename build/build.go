@@ -6,6 +6,7 @@ package build
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/TheAgent-net/webagent/action"
 	"github.com/TheAgent-net/webagent/brain"
@@ -50,7 +51,7 @@ func Build(ctx context.Context, s *spec.AgentSpec, injected []core.Tool) (*core.
 	if err != nil {
 		return nil, fmt.Errorf("%s: action provider %q: %w", s.Name, ap.Name(), err)
 	}
-	tools := append(provTools, injected...)
+	tools := slices.Concat(provTools, injected)
 
 	obs, err := observability.Registry.Get(s.Observability.Type, s.Observability.Config)
 	if err != nil {

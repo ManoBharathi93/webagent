@@ -50,7 +50,11 @@ func (gt guardedTool) Call(ctx context.Context, args map[string]any) (map[string
 		meta["args"] = string(b)
 	}
 	dec, err := gt.g.Inspect(ctx, core.GuardInput{Stage: core.StageAction, Action: gt.t.Name(), Meta: meta})
-	if err == nil && !dec.Allow {
+	if err != nil {
+		// Fail CLOSED: if the guardrail itself errors, do not execute the action.
+		return map[string]any{"error": "blocked_by_guardrail", "reason": "guardrail error: " + err.Error()}, nil
+	}
+	if !dec.Allow {
 		// Deterministic block: the tool never executes. Returned as a normal result (not a
 		// Go error) so the model sees it was blocked and can respond, instead of the turn crashing.
 		return map[string]any{"error": "blocked_by_guardrail", "reason": dec.Reason}, nil

@@ -2,11 +2,20 @@ package action
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/TheAgent-net/webagent/core"
 	"github.com/TheAgent-net/webagent/guardrail"
 )
+
+// erroringGuardrail always fails its Inspect call.
+type erroringGuardrail struct{}
+
+func (erroringGuardrail) Name() string { return "erroring" }
+func (erroringGuardrail) Inspect(context.Context, core.GuardInput) (core.Decision, error) {
+	return core.Decision{}, fmt.Errorf("guardrail unavailable")
+}
 
 type dangerousTool struct{ ran *bool }
 
@@ -46,6 +55,22 @@ func TestGuardBlocksDangerousToolDeterministically(t *testing.T) {
 	}
 	if out["error"] != "blocked_by_guardrail" {
 		t.Fatalf("expected a blocked result, got %v", out)
+	}
+}
+
+// Fail-closed: if the guardrail itself errors, the tool must NOT execute.
+func TestGuardFailsClosedOnGuardrailError(t *testing.T) {
+	ran := false
+	tool := Guard(benignTool{ran: &ran}, erroringGuardrail{})
+	out, err := tool.Call(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ran {
+		t.Fatal("tool must NOT execute when the guardrail errors (fail-closed)")
+	}
+	if out["error"] != "blocked_by_guardrail" {
+		t.Fatalf("expected a blocked result on guardrail error, got %v", out)
 	}
 }
 
