@@ -86,9 +86,9 @@ func (s *AgentSpec) Validate() error {
 	if s.Name == "" {
 		return fmt.Errorf("spec: name is required")
 	}
-	if s.Action.MCPURL == "" {
-		return fmt.Errorf("spec %q: action.mcpUrl is required", s.Name)
-	}
+	// Action config (e.g. mcpUrl) is validated by the chosen action provider at build time,
+	// not here — the default "none" provider needs no endpoint, so requiring one globally
+	// would reject a valid discovery-only agent.
 	if len(s.Channels) == 0 {
 		return fmt.Errorf("spec %q: at least one channel is required", s.Name)
 	}

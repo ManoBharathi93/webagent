@@ -55,7 +55,9 @@ func newHTTP(name, defAddr, path string) spi.Constructor[core.Channel] {
 
 func (h *httpChannel) Name() string { return h.name }
 
-func (h *httpChannel) Start(ctx context.Context, dispatch core.Dispatch) error {
+// handler builds the HTTP handler for this channel: POST {user,text} -> dispatch -> payload.
+// Extracted so it can be tested without binding a port.
+func (h *httpChannel) handler(dispatch core.Dispatch) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc(h.path, func(w http.ResponseWriter, r *http.Request) {
 		var in struct {
@@ -74,7 +76,11 @@ func (h *httpChannel) Start(ctx context.Context, dispatch core.Dispatch) error {
 		w.Header().Set("Content-Type", out.ContentType)
 		_, _ = w.Write([]byte(out.Body))
 	})
-	srv := &http.Server{Addr: h.addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
+	return mux
+}
+
+func (h *httpChannel) Start(ctx context.Context, dispatch core.Dispatch) error {
+	srv := &http.Server{Addr: h.addr, Handler: h.handler(dispatch), ReadHeaderTimeout: 10 * time.Second}
 	go func() { <-ctx.Done(); _ = srv.Close() }()
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err

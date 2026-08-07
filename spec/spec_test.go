@@ -29,7 +29,6 @@ func TestValidate(t *testing.T) {
 
 	cases := map[string]func(*AgentSpec){
 		"missing name":      func(s *AgentSpec) { s.Name = "" },
-		"missing mcpUrl":    func(s *AgentSpec) { s.Action.MCPURL = "" },
 		"no channels":       func(s *AgentSpec) { s.Channels = nil },
 		"channel no type":   func(s *AgentSpec) { s.Channels = []ChannelSpec{{Presenter: "text"}} },
 		"bad schemaVersion": func(s *AgentSpec) { s.SchemaVersion = "999" },

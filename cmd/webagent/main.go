@@ -4,9 +4,10 @@
 //	webagent validate <spec>    load a spec and resolve every chosen provider
 //	webagent serve <spec>       build the agent and run its channels
 //
-// The action layer (MCP tools) is assumed to exist; this CLI runs the framework with the
-// model-free Echo brain and an empty toolset, so the template is demonstrable without live
-// credentials. A production main injects the ADK brain + MCP toolset.
+// By default this CLI runs the model-free echo brain and the built-in providers, so the
+// template is demonstrable without credentials. A real deployment selects a model provider
+// (e.g. openrouter) and an action provider (e.g. mcp) in the spec, and may inject extra tools
+// via build.WithTools.
 package main
 
 import (
@@ -54,8 +55,12 @@ func main() {
 		if err != nil {
 			log.Fatalf("build: %v", err)
 		}
+		prov := s.Action.Provider
+		if prov == "" {
+			prov = action.Registry.Default()
+		}
 		fmt.Printf("OK  %s (%s)\n", a.Name, s.Business)
-		fmt.Printf("  action    : %s (%d tools)\n", s.Action.MCPURL, len(a.Tools))
+		fmt.Printf("  action    : provider=%s (%d tools)\n", prov, len(a.Tools))
 		fmt.Printf("  model     : %s\n", a.Brain.Name())
 		fmt.Printf("  retrieval : %s\n", a.Retriever.Name())
 		fmt.Printf("  memory    : %s\n", a.Memory.Name())

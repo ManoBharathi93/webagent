@@ -292,7 +292,10 @@ func (a *Agent) Handle(ctx context.Context, t Turn) (msg AgentMessage, err error
 		}
 	}()
 
-	scope := Scope{UserID: t.ChannelUserID}
+	// Scope memory by agent + user (+ session when the channel supplies one). AgentID keeps a
+	// shared memory backend from mixing different agents; SessionID (from Turn metadata) lets a
+	// channel separate concurrent conversations for the same user.
+	scope := Scope{UserID: t.ChannelUserID, AgentID: a.Name, SessionID: t.Meta["session"]}
 
 	// Input guardrail. Fail CLOSED: if the guardrail itself errors, deny rather than let
 	// unvetted input through. A guardrail error is recorded on the span, not swallowed.
