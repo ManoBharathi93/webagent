@@ -35,10 +35,14 @@ type Brand struct {
 	Logo         string `json:"logo"`
 }
 
-// ActionSpec points at the business's MCP server (the grounded capability layer).
+// ActionSpec configures the action layer: which provider yields the agent's tools, and the
+// business's MCP endpoint. Provider defaults to "none" (host injects tools, or discovery-only)
+// until a concrete provider like "mcp" or "browser" is selected.
 type ActionSpec struct {
-	MCPURL      string `json:"mcpUrl"`
-	AuthBaseURL string `json:"authBaseUrl"`
+	Provider    string         `json:"provider"`
+	MCPURL      string         `json:"mcpUrl"`
+	AuthBaseURL string         `json:"authBaseUrl"`
+	Config      map[string]any `json:"config"`
 }
 
 // ComponentSpec picks a provider for a slot by name and hands it opaque config. An empty

@@ -20,7 +20,11 @@ nobody forks the core.
 | Channel | `Channel` | a2a, web, whatsapp, telegram, slack | a2a |
 | Presenter | `Presenter` | text, terminal (QR), web | text |
 | Model | `Brain` | echo, openrouter, gateway (any OpenAI-compatible) | echo |
-| Action | `Tool` | injected (MCP in production) | — |
+| Action | `Provider` / `Tool` | none, demo (MCP/browser providers to come) | none |
+
+Every tool the agent holds — from the action provider or injected by the host — is wrapped by
+`action.Guard`, which runs the chosen guardrail on the action **before** it executes. The model
+cannot bypass it: action safety is code-enforced, not prompt-enforced.
 
 Three audiences, one contract: businesses that **configure** (pick from the menu), businesses
 that **extend** (register a custom provider), and partner companies that **provide** (ship an

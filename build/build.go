@@ -4,6 +4,7 @@
 package build
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/TheAgent-net/webagent/action"
@@ -17,10 +18,12 @@ import (
 	"github.com/TheAgent-net/webagent/spec"
 )
 
-// Build resolves the spec's picks across every slot — including the model (brain) — and
-// wires them together. tools is the action layer (the MCP's tools), supplied by the caller
-// since it depends on live auth. Empty picks resolve to slot defaults.
-func Build(s *spec.AgentSpec, tools []core.Tool) (*core.Agent, error) {
+// Build resolves the spec's picks across every slot — including the model (brain) and the
+// action provider — and wires them together. injected tools are extra tools supplied by the
+// caller (e.g. a live MCP client built with per-user auth the framework can't construct from
+// a spec); they are combined with the action provider's tools and all are guarded. Empty
+// picks resolve to slot defaults.
+func Build(ctx context.Context, s *spec.AgentSpec, injected []core.Tool) (*core.Agent, error) {
 	br, err := brain.Registry.Get(s.Model.Type, s.Model.Config)
 	if err != nil {
 		return nil, wrap(s, err)
@@ -37,6 +40,16 @@ func Build(s *spec.AgentSpec, tools []core.Tool) (*core.Agent, error) {
 	if err != nil {
 		return nil, wrap(s, err)
 	}
+
+	ap, err := action.Registry.Get(s.Action.Provider, s.Action.Config)
+	if err != nil {
+		return nil, wrap(s, err)
+	}
+	provTools, err := ap.Tools(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("%s: action provider %q: %w", s.Name, ap.Name(), err)
+	}
+	tools := append(provTools, injected...)
 
 	var bindings []core.ChannelBinding
 	for i, cs := range s.Channels {

@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/TheAgent-net/webagent/action"
 	"github.com/TheAgent-net/webagent/brain"
 	"github.com/TheAgent-net/webagent/build"
 	"github.com/TheAgent-net/webagent/channels"
@@ -35,6 +36,7 @@ func main() {
 	switch os.Args[1] {
 	case "options":
 		printSlot("model", brain.Registry.Options(), brain.Registry.Default())
+		printSlot("action", action.Registry.Options(), action.Registry.Default())
 		printSlot("retrieval", retrieval.Registry.Options(), retrieval.Registry.Default())
 		printSlot("memory", memory.Registry.Options(), memory.Registry.Default())
 		printSlot("guardrail", guardrail.Registry.Options(), guardrail.Registry.Default())
@@ -42,12 +44,12 @@ func main() {
 		printSlot("presenter", present.Registry.Options(), present.Registry.Default())
 	case "validate":
 		s := mustLoad()
-		a, err := build.Build(s, nil)
+		a, err := build.Build(context.Background(), s, nil)
 		if err != nil {
 			log.Fatalf("build: %v", err)
 		}
 		fmt.Printf("OK  %s (%s)\n", a.Name, s.Business)
-		fmt.Printf("  action    : %s\n", s.Action.MCPURL)
+		fmt.Printf("  action    : %s (%d tools)\n", s.Action.MCPURL, len(a.Tools))
 		fmt.Printf("  model     : %s\n", a.Brain.Name())
 		fmt.Printf("  retrieval : %s\n", a.Retriever.Name())
 		fmt.Printf("  memory    : %s\n", a.Memory.Name())
@@ -57,12 +59,12 @@ func main() {
 		}
 	case "serve":
 		s := mustLoad()
-		a, err := build.Build(s, nil)
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+		defer stop()
+		a, err := build.Build(ctx, s, nil)
 		if err != nil {
 			log.Fatalf("build: %v", err)
 		}
-		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-		defer stop()
 		log.Printf("serving %q with %d channel(s); Ctrl-C to stop", a.Name, len(a.Bindings))
 		if err := a.Run(ctx); err != nil && err != context.Canceled {
 			log.Fatalf("run: %v", err)
