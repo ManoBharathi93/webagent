@@ -159,3 +159,21 @@ multi-tenant marketplace identity, deterministic safety, and the declarative spe
   OpenAI-compatible client; default stays `echo` (zero-config, no key).
 - The comprehensive **partner roster per slot**, and the conformance bar to become a default.
 - Spec format: JSON now (zero-dep); YAML for authoring ergonomics later.
+
+## 13. Known deferred hardening (tracked, not yet built)
+
+These are understood and scheduled, not overlooked. They are surfaced here (and in
+[SECURITY.md](SECURITY.md)) so partners can see the roadmap:
+
+- **Per-slot fallback / circuit-breaker.** When a partner provider errors or is unavailable,
+  degrade to the built-in default (e.g. memory → session) instead of failing the turn.
+- **PII / secret redaction in traces & memory.** `TurnTrace` carries input/output text and
+  memory stores user content; add a redaction policy before any exporter ships user data.
+- **Idempotency keys for side-effecting tools.** Order/payment-style actions need
+  dedup/idempotency so a retry does not double-execute.
+- **Rate limits, quotas, and cost caps** per tenant/user (the model gateway is the natural
+  meter).
+- **Graceful shutdown / in-flight draining** in `Agent.Run` (currently ctx-cancel closes
+  channels without draining active turns).
+- **Multi-tenant credential vault** and per-tenant provider credentials, and the AgentNet
+  identity-forwarding + escrow/billing integration.
