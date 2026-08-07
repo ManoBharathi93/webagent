@@ -20,7 +20,7 @@ nobody forks the core.
 | Channel | `Channel` | a2a, web, whatsapp, telegram, slack | a2a |
 | Presenter | `Presenter` | text, terminal (QR), web | text |
 | Model | `Brain` | echo, openrouter, gateway (any OpenAI-compatible) | echo |
-| Action | `Provider` / `Tool` | none, demo (MCP/browser providers to come) | none |
+| Action | `Provider` / `Tool` | none, demo, **mcp** (browser to come) | none |
 | Observability | `Observer` | none, log, memory (OTel exporter to come) | none |
 
 Every tool the agent holds — from the action provider or injected by the host — is wrapped by
@@ -61,6 +61,24 @@ webagent serve myspec.json
 Keys are read from the environment at runtime (an exported env var always wins); `keys set`
 simply stores them in your OS config dir (mode `0600`) so you don't re-export each run. Keys
 are never written into a spec.
+
+## Connect your MCP
+
+A business that already has an MCP server turns it into an acting agent with one spec block —
+no code. The `mcp` action provider connects, lists the server's tools, and hands them to the
+agent (each guarded):
+
+```json
+"action": {
+  "provider": "mcp",
+  "mcpUrl": "https://your-server/mcp",
+  "config": { "apiKeyEnv": "YOUR_MCP_KEY" }
+}
+```
+
+`validate`/`serve` perform the MCP handshake at build time, so `validate` reports the real tool
+count. Streamable HTTP (JSON and SSE) and bearer/api-key auth are supported; OAuth-gated servers
+are a follow-up.
 
 ## Provider conformance
 

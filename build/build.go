@@ -66,7 +66,19 @@ func Build(ctx context.Context, s *spec.AgentSpec, opts ...Option) (*core.Agent,
 		return nil, wrap(s, err)
 	}
 
-	ap, err := action.Registry.Get(s.Action.Provider, s.Action.Config)
+	// Merge the top-level action endpoint fields into the provider config so a provider (e.g.
+	// mcp) reads action.mcpUrl without the spec author restating it under config.
+	actionCfg := map[string]any{}
+	for k, v := range s.Action.Config {
+		actionCfg[k] = v
+	}
+	if _, ok := actionCfg["url"]; !ok && s.Action.MCPURL != "" {
+		actionCfg["url"] = s.Action.MCPURL
+	}
+	if _, ok := actionCfg["authBaseUrl"]; !ok && s.Action.AuthBaseURL != "" {
+		actionCfg["authBaseUrl"] = s.Action.AuthBaseURL
+	}
+	ap, err := action.Registry.Get(s.Action.Provider, actionCfg)
 	if err != nil {
 		return nil, wrap(s, err)
 	}

@@ -6,6 +6,32 @@ All notable changes are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-07
+
+### Added
+
+- **`mcp` action provider**: connects to any MCP server over the Streamable HTTP transport
+  (spec 2025-06-18), lists its tools, and exposes each to the agent (with its JSON schema,
+  guarded). Handles both `application/json` and single-response `text/event-stream` replies,
+  session ids, and the protocol-version header. Bearer/api-key auth via an env var; OAuth is a
+  follow-up. Verified against a spec-compliant mock server (JSON + SSE paths).
+- `build` now merges `action.mcpUrl` / `action.authBaseUrl` into the action provider config, so
+  the mcp provider reads the endpoint the spec already declares.
+
+### Changed
+
+- `spec.Validate` no longer requires `action.mcpUrl` globally — the chosen action provider
+  validates its own config (the mcp provider requires a url; `none`/`demo` do not).
+- `validate` prints the resolved action provider + tool count instead of the raw url.
+- Memory `Scope` now carries `AgentID` (isolates a shared backend per agent) and `SessionID`
+  (from Turn metadata), not just `UserID`.
+
+### Fixed
+
+- `Agent.Run` no longer tears down when a channel returns cleanly (a stub channel returning nil
+  used to stop the whole agent).
+- Refreshed a stale CLI comment; added channels HTTP tests; golangci-lint findings resolved.
+
 ## [0.1.0] - 2026-08-07
 
 ### Added
