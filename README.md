@@ -58,7 +58,16 @@ The built-in providers pass it in their own tests.
 
 ## Status
 
-Phase 1 (SPI foundation) complete: slots, capability-aware registry (default/override),
-Memory + Guardrail partner slots, conformance kit, spec v1, two example businesses. Builds,
-vets, and tests clean. Next phases (model-agnostic brain, action layer, observability/eval,
-partner adapters) are in [DESIGN.md](DESIGN.md).
+Complete and green (build/vet/test):
+
+- **Phase 1 — SPI foundation:** slots, capability-aware registry (default/override), Memory +
+  Guardrail partner slots, conformance kit, spec v1, two example businesses.
+- **Phase 2 — model-agnostic brain:** `openrouter`/`gateway` OpenAI-compatible providers with a
+  tool-calling loop; `echo` default.
+- **Phase 3 — action layer:** pluggable action-provider slot, and every tool call routed through
+  the guardrail before it executes (deterministic, code-enforced safety).
+- **Phase 4 — observability + eval:** per-turn `TurnTrace` (OTel GenAI-aligned) to a pluggable
+  observer (none/log/memory), and an [`eval/`](eval/eval.go) harness (scenarios + checks).
+
+Remaining (see [DESIGN.md](DESIGN.md)): concrete MCP/browser action providers, an OpenTelemetry
+exporter, partner adapters (memory/guardrail), multi-tenant identity/billing.
