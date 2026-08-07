@@ -20,10 +20,20 @@ Security-relevant properties of the framework that reviewers should know:
   [`core`](core/core.go) and [`action`](action/action.go).
 - **Action safety is code-enforced.** Every tool call is routed through the guardrail *before*
   execution by `action.Guard`; the model cannot bypass it.
-- **Secrets are never read from a spec.** Providers take the *name* of an environment variable
-  in config and read the secret from the environment at runtime. The `webagent keys` command
-  stores keys in the OS user config dir (mode `0600`), outside the repo, and loads them into the
-  environment at runtime; an exported env var always takes precedence.
+- **Secrets are never read from a spec.** A spec *names* a credential — any config key ending in
+  `Secret` is a reference resolved through the [secrets vault](secrets/secrets.go) at build time,
+  scoped per tenant. A reference that cannot be resolved fails the build rather than starting a
+  provider without its credential. The `webagent keys` command stores keys in the OS user config
+  dir (mode `0600`), outside the repo; an exported env var always takes precedence.
+- **Inbound webhooks are authenticated before they are parsed.** The Slack adapter verifies
+  `X-Slack-Signature` (HMAC-SHA256 over `v0:{timestamp}:{raw body}`) in constant time and rejects
+  timestamps outside a five-minute replay window; the WhatsApp adapter verifies
+  `X-Hub-Signature-256` against the app secret in constant time. A channel refuses to start
+  without its signing credential, so an unauthenticated endpoint cannot be exposed by
+  misconfiguration.
+- **Webhook channels are loop-safe and idempotent at the delivery layer.** Bot/own messages never
+  start a turn, and retried deliveries are de-duplicated by event/message id — so a platform
+  retry cannot cause the agent to act twice.
 - **Traces may contain user content.** `core.TurnTrace` carries input/output text. Observers
   that export traces are responsible for redaction/retention appropriate to their environment;
   the built-in `log` observer does not emit input/output text.
@@ -34,6 +44,8 @@ CI runs `govulncheck` on every push and pull request. Dependencies are pinned vi
 
 ## Known deferred hardening
 
-Tracked in [DESIGN.md](DESIGN.md) "Open decisions": per-slot fallback/circuit-breaker,
-PII/secret redaction in traces and memory, idempotency keys for side-effecting tools, rate
-limits / cost caps, and the multi-tenant credential vault.
+Tracked in [DESIGN.md](DESIGN.md) §13: per-slot fallback/circuit-breaker, PII/secret redaction in
+traces and memory, idempotency keys for side-effecting *tools* (the webhook layer is already
+de-duplicated), rate limits / cost caps, and graceful in-flight draining. The multi-tenant
+credential vault has landed (see [`secrets/`](secrets/secrets.go)); managed/cloud vault providers
+are still to come.

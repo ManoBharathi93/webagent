@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+	"strings"
 
 	"github.com/TheAgent-net/webagent/action"
 	"github.com/TheAgent-net/webagent/brain"
@@ -18,6 +19,7 @@ import (
 	"github.com/TheAgent-net/webagent/observability"
 	"github.com/TheAgent-net/webagent/present"
 	"github.com/TheAgent-net/webagent/retrieval"
+	"github.com/TheAgent-net/webagent/secrets"
 	"github.com/TheAgent-net/webagent/spec"
 )
 
@@ -26,8 +28,9 @@ import (
 type Option func(*options)
 
 type options struct {
-	tools  []core.Tool
-	logger *slog.Logger
+	tools   []core.Tool
+	logger  *slog.Logger
+	secrets core.Secrets
 }
 
 // WithTools injects extra tools in addition to the action provider's — e.g. a live MCP client
@@ -41,6 +44,44 @@ func WithLogger(l *slog.Logger) Option {
 	return func(o *options) { o.logger = l }
 }
 
+// WithSecrets overrides the vault used to resolve secret references, ignoring the spec's
+// secrets pick. Useful when a host already has its own credential system.
+func WithSecrets(s core.Secrets) Option {
+	return func(o *options) { o.secrets = s }
+}
+
+// secretSuffix marks a config key as a reference to a secret rather than a literal value:
+// {"botTokenSecret": "SLACK_BOT_TOKEN"} resolves to {"botToken": "<value from the vault>"}.
+// This keeps credentials out of specs while requiring no change to any provider's constructor.
+const secretSuffix = "Secret"
+
+// resolveSecrets returns a copy of cfg with every "<name>Secret" reference replaced by the
+// resolved "<name>" value. An unresolvable reference is an error: a provider silently starting
+// without its credential is worse than failing to build.
+func resolveSecrets(ctx context.Context, vault core.Secrets, tenant string, cfg map[string]any) (map[string]any, error) {
+	out := make(map[string]any, len(cfg))
+	for k, v := range cfg {
+		out[k] = v
+	}
+	for k, v := range cfg {
+		name, isRef := strings.CutSuffix(k, secretSuffix)
+		if !isRef || name == "" {
+			continue
+		}
+		key, ok := v.(string)
+		if !ok || key == "" {
+			return nil, fmt.Errorf("config %q must name a secret (a non-empty string)", k)
+		}
+		val, err := vault.Get(ctx, tenant, key)
+		if err != nil {
+			return nil, fmt.Errorf("resolve %q via %s vault: %w", key, vault.Name(), err)
+		}
+		delete(out, k)
+		out[name] = val
+	}
+	return out, nil
+}
+
 // Build resolves the spec's picks across every slot — including the model (brain) and the
 // action provider — and wires them together. Empty picks resolve to slot defaults.
 func Build(ctx context.Context, s *spec.AgentSpec, opts ...Option) (*core.Agent, error) {
@@ -49,19 +90,53 @@ func Build(ctx context.Context, s *spec.AgentSpec, opts ...Option) (*core.Agent,
 		opt(&o)
 	}
 
-	br, err := brain.Registry.Get(s.Model.Type, s.Model.Config)
+	// The vault resolves every "<name>Secret" reference in a provider's config. It is itself a
+	// slot (env by default), and WithSecrets overrides the spec's pick.
+	vault := o.secrets
+	if vault == nil {
+		var err error
+		if vault, err = secrets.Registry.Get(s.Secrets.Type, s.Secrets.Config); err != nil {
+			return nil, wrap(s, err)
+		}
+	}
+	// Secrets are scoped by tenant; the agent name identifies the business by default.
+	cfg := func(slot string, c map[string]any) (map[string]any, error) {
+		out, err := resolveSecrets(ctx, vault, s.Name, c)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %s: %w", s.Name, slot, err)
+		}
+		return out, nil
+	}
+
+	modelCfg, err := cfg("model", s.Model.Config)
+	if err != nil {
+		return nil, err
+	}
+	br, err := brain.Registry.Get(s.Model.Type, modelCfg)
 	if err != nil {
 		return nil, wrap(s, err)
 	}
-	r, err := retrieval.Registry.Get(s.Retrieval.Type, s.Retrieval.Config)
+	retrievalCfg, err := cfg("retrieval", s.Retrieval.Config)
+	if err != nil {
+		return nil, err
+	}
+	r, err := retrieval.Registry.Get(s.Retrieval.Type, retrievalCfg)
 	if err != nil {
 		return nil, wrap(s, err)
 	}
-	mem, err := memory.Registry.Get(s.Memory.Type, s.Memory.Config)
+	memoryCfg, err := cfg("memory", s.Memory.Config)
+	if err != nil {
+		return nil, err
+	}
+	mem, err := memory.Registry.Get(s.Memory.Type, memoryCfg)
 	if err != nil {
 		return nil, wrap(s, err)
 	}
-	guard, err := guardrail.Registry.Get(s.Guardrail.Type, s.Guardrail.Config)
+	guardCfg, err := cfg("guardrail", s.Guardrail.Config)
+	if err != nil {
+		return nil, err
+	}
+	guard, err := guardrail.Registry.Get(s.Guardrail.Type, guardCfg)
 	if err != nil {
 		return nil, wrap(s, err)
 	}
@@ -78,6 +153,9 @@ func Build(ctx context.Context, s *spec.AgentSpec, opts ...Option) (*core.Agent,
 	if _, ok := actionCfg["authBaseUrl"]; !ok && s.Action.AuthBaseURL != "" {
 		actionCfg["authBaseUrl"] = s.Action.AuthBaseURL
 	}
+	if actionCfg, err = cfg("action", actionCfg); err != nil {
+		return nil, err
+	}
 	ap, err := action.Registry.Get(s.Action.Provider, actionCfg)
 	if err != nil {
 		return nil, wrap(s, err)
@@ -88,7 +166,11 @@ func Build(ctx context.Context, s *spec.AgentSpec, opts ...Option) (*core.Agent,
 	}
 	tools := slices.Concat(provTools, o.tools)
 
-	obs, err := observability.Registry.Get(s.Observability.Type, s.Observability.Config)
+	obsCfg, err := cfg("observability", s.Observability.Config)
+	if err != nil {
+		return nil, err
+	}
+	obs, err := observability.Registry.Get(s.Observability.Type, obsCfg)
 	if err != nil {
 		return nil, wrap(s, err)
 	}
@@ -99,7 +181,11 @@ func Build(ctx context.Context, s *spec.AgentSpec, opts ...Option) (*core.Agent,
 		if err != nil {
 			return nil, fmt.Errorf("%s: channels[%d]: %w", s.Name, i, err)
 		}
-		ch, err := channels.Registry.Get(cs.Type, cs.Config)
+		chCfg, err := cfg(fmt.Sprintf("channels[%d]", i), cs.Config)
+		if err != nil {
+			return nil, err
+		}
+		ch, err := channels.Registry.Get(cs.Type, chCfg)
 		if err != nil {
 			return nil, fmt.Errorf("%s: channels[%d]: %w", s.Name, i, err)
 		}

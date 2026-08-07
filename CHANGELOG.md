@@ -6,6 +6,32 @@ All notable changes are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-07
+
+### Added
+
+- **Live Slack channel adapter** (Events API): verifies `X-Slack-Signature` (HMAC-SHA256 over
+  `v0:{ts}:{body}`, constant-time compare, 5-minute replay window), answers the
+  `url_verification` handshake, acknowledges within Slack's 3-second budget and replies through
+  `chat.postMessage` (threaded), ignores bot/own messages so the agent cannot loop, and
+  de-duplicates retried deliveries.
+- **Live WhatsApp channel adapter** (Cloud API): answers Meta's `hub.challenge` subscription
+  handshake, verifies `X-Hub-Signature-256` against the app secret, acknowledges immediately and
+  replies via the Graph API, skips status callbacks, and de-duplicates by message id.
+- **Secrets slot (multi-tenant vault)**: `core.Secrets` with `env` (default), `file` (per-tenant
+  JSON, 0600) and `static` (in-memory) providers. Any config key ending in `Secret` is a
+  *reference* that `build` resolves through the vault (`botTokenSecret` -> `botToken`), so specs
+  name credentials instead of containing them. Scoped per tenant; `build.WithSecrets` lets a host
+  supply its own vault. An unresolvable reference fails the build.
+- `examples/support-live-channels.json` showing both live channels configured by reference only.
+
+### Changed
+
+- Example specs use only offline channels so `validate`/`serve` still run without credentials;
+  the live-channel configuration lives in its own example.
+- Slack and WhatsApp are no longer inert stubs — they now require credentials and fail fast
+  without them (only `telegram` remains a stub).
+
 ## [0.2.0] - 2026-08-07
 
 ### Added

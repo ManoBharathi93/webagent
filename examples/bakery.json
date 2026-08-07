@@ -18,7 +18,6 @@
   "memory": { "type": "session" },
   "guardrail": { "type": "basic" },
   "channels": [
-    { "type": "web", "presenter": "web", "config": { "addr": ":9090" } },
-    { "type": "slack", "presenter": "text" }
+    { "type": "web", "presenter": "web", "config": { "addr": ":9090" } }
   ]
 }

@@ -9,7 +9,6 @@
   "memory": { "type": "session" },
   "guardrail": { "type": "basic" },
   "channels": [
-    { "type": "a2a", "presenter": "terminal", "config": { "addr": ":8787" } },
-    { "type": "whatsapp", "presenter": "text" }
+    { "type": "a2a", "presenter": "terminal", "config": { "addr": ":8787" } }
   ]
 }

@@ -10,6 +10,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"time"
@@ -102,6 +103,25 @@ type Decision struct {
 type Guardrail interface {
 	Name() string
 	Inspect(ctx context.Context, in GuardInput) (Decision, error)
+}
+
+// ---------------------------------------------------------------------------
+// Secrets slot — the multi-tenant credential vault.
+// ---------------------------------------------------------------------------
+
+// ErrSecretNotFound is returned by a Secrets provider when a key has no value.
+var ErrSecretNotFound = errors.New("secret not found")
+
+// Secrets resolves named credentials for a tenant. Every provider that needs a credential
+// (channel tokens, MCP keys, model keys) goes through this slot rather than reading process
+// state directly, so a deployment can swap an env-var lookup for a real vault without any
+// provider changing. Values are never stored in a spec — a spec names the key, not the secret.
+//
+// tenant scopes the lookup (a business/agent id); an empty tenant means the deployment-wide
+// default. Implementations MUST NOT leak one tenant's secrets to another.
+type Secrets interface {
+	Name() string
+	Get(ctx context.Context, tenant, key string) (string, error)
 }
 
 // ---------------------------------------------------------------------------

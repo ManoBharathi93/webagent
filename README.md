@@ -17,7 +17,8 @@ nobody forks the core.
 | Retrieval | `Retriever` | live, keyword, hybrid | live |
 | Memory | `Memory` | session (+ partner adapters) | session |
 | Guardrail | `Guardrail` | basic, off (+ partner adapters) | basic |
-| Channel | `Channel` | a2a, web, whatsapp, telegram, slack | a2a |
+| Channel | `Channel` | a2a, web, **slack**, **whatsapp** (live); telegram (stub) | a2a |
+| Secrets | `Secrets` | env, file, static (managed vaults to come) | env |
 | Presenter | `Presenter` | text, terminal (QR), web | text |
 | Model | `Brain` | echo, openrouter, gateway (any OpenAI-compatible) | echo |
 | Action | `Provider` / `Tool` | none, demo, **mcp** (browser to come) | none |
@@ -84,6 +85,37 @@ agent (each guarded):
 count. Streamable HTTP (JSON and SSE) and bearer/api-key auth are supported; OAuth-gated servers
 are a follow-up.
 
+## Reach your customers: Slack and WhatsApp
+
+Live channel adapters put the same agent where customers already are. Both verify every
+inbound webhook signature, acknowledge immediately (then reply through the platform API),
+ignore their own messages, and de-duplicate retried deliveries.
+
+```json
+"channels": [
+  { "type": "slack", "presenter": "text", "config": {
+      "botTokenSecret": "SLACK_BOT_TOKEN",
+      "signingSecretSecret": "SLACK_SIGNING_SECRET" } },
+  { "type": "whatsapp", "presenter": "text", "config": {
+      "phoneNumberId": "1234567890",
+      "accessTokenSecret": "WHATSAPP_ACCESS_TOKEN",
+      "appSecretSecret": "WHATSAPP_APP_SECRET",
+      "verifyTokenSecret": "WHATSAPP_VERIFY_TOKEN" } }
+]
+```
+
+See [`examples/support-live-channels.json`](examples/support-live-channels.json). Point Slack's
+Request URL at `/slack/events` and Meta's callback URL at `/whatsapp/webhook`.
+
+## Secrets: a spec names them, never contains them
+
+Any config key ending in `Secret` is a **reference**: `"botTokenSecret": "SLACK_BOT_TOKEN"`
+resolves through the selected vault into `botToken` at build time. So a spec is safe to commit,
+and moving from environment variables to a managed vault is a one-line change (`"secrets":
+{"type": "file", "config": {"path": "..."}}`) with no provider modifications. Secrets are scoped
+per tenant, and a reference that cannot be resolved **fails the build** rather than starting a
+channel with no credential.
+
 ## Provider conformance
 
 Every provider — built-in or partner — must pass its slot's conformance suite
@@ -103,8 +135,13 @@ Complete and green (build/vet/test):
 - **Phase 4 — observability + eval:** per-turn `TurnTrace` (OTel GenAI-aligned) to a pluggable
   observer (none/log/memory), and an [`eval/`](eval/eval.go) harness (scenarios + checks).
 
-**Works today:** echo/openrouter/gateway brains; `mcp` over Streamable HTTP (JSON + SSE,
-bearer/api-key); HTTP `a2a`/`web` channels; GuardAll; TurnTrace; `keys` CLI.
+- **Phase 5 — reach + credentials:** live **Slack** and **WhatsApp** channel adapters (signed
+  webhooks, fast ack, loop-safe, de-duplicated) and a multi-tenant **secrets vault** that
+  resolves `<name>Secret` references for every slot.
 
-**Not yet:** browser action provider; OAuth-gated MCP; OTel exporter; live WhatsApp/Telegram/Slack
-adapters; partner memory/guardrail adapters; multi-tenant identity/billing. See [DESIGN.md](DESIGN.md).
+**Works today:** echo/openrouter/gateway brains; `mcp` over Streamable HTTP (JSON + SSE,
+bearer/api-key); HTTP `a2a`/`web` channels; live Slack + WhatsApp; secrets vault (env/file/static);
+GuardAll; TurnTrace; `keys` CLI.
+
+**Not yet:** browser action provider; OAuth-gated MCP; OTel exporter; Telegram adapter; partner
+memory/guardrail adapters; AgentNet identity forwarding + billing. See [DESIGN.md](DESIGN.md).

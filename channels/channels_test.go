@@ -51,7 +51,7 @@ func TestHTTPChannelRejectsBadJSON(t *testing.T) {
 
 // A stub channel is inert: Start returns nil immediately (so it never tears down the agent).
 func TestStubChannelIsInert(t *testing.T) {
-	c, err := Registry.Get("slack", nil)
+	c, err := Registry.Get("telegram", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -24,9 +24,8 @@ var Registry = spi.New[core.Channel]("channel")
 func init() {
 	Registry.Register(spi.Descriptor{Name: "a2a", Summary: "agent-to-agent HTTP endpoint (marketplace)"}, newHTTP("a2a", ":8787", "/a2a"))
 	Registry.Register(spi.Descriptor{Name: "web", Summary: "website widget HTTP endpoint"}, newHTTP("web", ":9090", "/chat"))
-	Registry.Register(spi.Descriptor{Name: "whatsapp", Summary: "WhatsApp (stub until adapter + credentials)"}, newStub("whatsapp"))
+	// slack and whatsapp are live adapters registered in their own files.
 	Registry.Register(spi.Descriptor{Name: "telegram", Summary: "Telegram (stub until adapter + credentials)"}, newStub("telegram"))
-	Registry.Register(spi.Descriptor{Name: "slack", Summary: "Slack (stub until adapter + credentials)"}, newStub("slack"))
 	Registry.SetDefault("a2a")
 }
 

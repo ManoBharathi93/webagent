@@ -24,9 +24,14 @@ and their interfaces:
 ## 2. Implement the interface
 
 Write a type that satisfies the slot interface. Config from the spec arrives as an opaque
-`map[string]any`; decode it into your own typed struct with `core.Decode`. **Never read secrets
-from the spec** — take the *name* of an environment variable in config and read the secret from
-the environment at runtime (see the `brain` gateway provider for the pattern).
+`map[string]any`; decode it into your own typed struct with `core.Decode`.
+
+**Credentials arrive already resolved.** Declare a plain config field (e.g. `botToken`); a spec
+author writes `"botTokenSecret": "SLACK_BOT_TOKEN"`, and `build` resolves that reference through
+the tenant's vault before your constructor runs. So you never read a secret from the spec, and
+never touch the environment yourself — you just read `c.BotToken`. Validate it and **return an
+error if it is empty**, so a misconfigured deployment fails at build instead of running without
+a credential (see the `slack` and `whatsapp` channels for the pattern).
 
 ```go
 type myMemory struct{ /* client, config */ }
