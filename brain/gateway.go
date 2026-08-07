@@ -152,19 +152,12 @@ func (g *gatewayBrain) complete(ctx context.Context, msgs []chatMessage, tools [
 	return out.Choices[0].Message, nil
 }
 
-// described is the optional capability a Tool may implement to expose a rich schema; when
-// absent, the tool is offered with a permissive object schema.
-type described interface {
-	Description() string
-	Schema() map[string]any
-}
-
 func openAITools(tools []core.Tool) []map[string]any {
 	out := make([]map[string]any, 0, len(tools))
 	for _, t := range tools {
 		desc := ""
 		params := map[string]any{"type": "object", "properties": map[string]any{}}
-		if d, ok := t.(described); ok {
+		if d, ok := t.(core.ToolSchema); ok {
 			desc = d.Description()
 			if s := d.Schema(); s != nil {
 				params = s

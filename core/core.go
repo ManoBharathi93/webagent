@@ -111,6 +111,15 @@ type Tool interface {
 	Call(ctx context.Context, args map[string]any) (map[string]any, error)
 }
 
+// ToolSchema is an optional capability a Tool may implement to advertise a description and a
+// JSON schema for its arguments, so the model can call it precisely. Tools that don't
+// implement it are offered with a permissive object schema. Wrappers (e.g. the action guard)
+// forward this capability so it survives wrapping.
+type ToolSchema interface {
+	Description() string
+	Schema() map[string]any
+}
+
 // ---------------------------------------------------------------------------
 // Channel + Presenter slots — transport and rendering (information interoperability).
 // ---------------------------------------------------------------------------

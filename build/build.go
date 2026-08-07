@@ -6,6 +6,7 @@ package build
 import (
 	"fmt"
 
+	"github.com/TheAgent-net/webagent/action"
 	"github.com/TheAgent-net/webagent/brain"
 	"github.com/TheAgent-net/webagent/channels"
 	"github.com/TheAgent-net/webagent/core"
@@ -57,8 +58,10 @@ func Build(s *spec.AgentSpec, tools []core.Tool) (*core.Agent, error) {
 		Retriever:   r,
 		Memory:      mem,
 		Guardrail:   guard,
-		Tools:       tools,
-		Bindings:    bindings,
+		// Every tool is wrapped so the guardrail inspects the action before it executes —
+		// the model cannot bypass this (it is code-enforced, not prompt-enforced).
+		Tools:    action.GuardAll(tools, guard),
+		Bindings: bindings,
 	}, nil
 }
 
