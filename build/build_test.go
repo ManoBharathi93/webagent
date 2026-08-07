@@ -18,7 +18,7 @@ func TestBuildBothExampleBusinesses(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: load: %v", path, err)
 		}
-		a, err := Build(context.Background(), s, nil)
+		a, err := Build(context.Background(), s)
 		if err != nil {
 			t.Fatalf("%s: build: %v", path, err)
 		}
@@ -42,7 +42,7 @@ func TestBuildResolvesDefaults(t *testing.T) {
 		Action:   spec.ActionSpec{MCPURL: "https://x/mcp"},
 		Channels: []spec.ChannelSpec{{Type: "a2a"}}, // no retrieval/memory/guardrail/presenter picks
 	}
-	a, err := Build(context.Background(), s, nil)
+	a, err := Build(context.Background(), s)
 	if err != nil {
 		t.Fatalf("build: %v", err)
 	}
@@ -61,7 +61,7 @@ func TestBuildRejectsUnknownProvider(t *testing.T) {
 		Retrieval: spec.ComponentSpec{Type: "does-not-exist"},
 		Channels:  []spec.ChannelSpec{{Type: "web", Presenter: "text"}},
 	}
-	_, err := Build(context.Background(), s, nil)
+	_, err := Build(context.Background(), s)
 	if err == nil || !strings.Contains(err.Error(), "unknown retrieval provider") {
 		t.Fatalf("expected unknown-provider error, got %v", err)
 	}
@@ -74,7 +74,7 @@ func TestBuildResolvesActionProviderTools(t *testing.T) {
 		Action:   spec.ActionSpec{MCPURL: "https://x/mcp", Provider: "demo"},
 		Channels: []spec.ChannelSpec{{Type: "a2a"}},
 	}
-	a, err := Build(context.Background(), s, nil)
+	a, err := Build(context.Background(), s)
 	if err != nil {
 		t.Fatalf("build: %v", err)
 	}
@@ -89,7 +89,7 @@ func TestAgentEmitsTrace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	a, err := Build(context.Background(), s, nil)
+	a, err := Build(context.Background(), s)
 	if err != nil {
 		t.Fatal(err)
 	}

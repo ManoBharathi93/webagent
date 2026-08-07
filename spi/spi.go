@@ -41,6 +41,16 @@ type Capable interface {
 	Capabilities() Capabilities
 }
 
+// RuntimeCapabilities returns the capabilities a provider instance advertises via Capable, or
+// nil if it does not implement Capable. Consumers use this to negotiate optional behavior at
+// call time without widening any required slot interface.
+func RuntimeCapabilities(v any) Capabilities {
+	if c, ok := v.(Capable); ok {
+		return c.Capabilities()
+	}
+	return nil
+}
+
 // Constructor builds a provider instance from opaque per-provider config (the spec's
 // `config` block, passed through untouched — this is the passthrough that lets a partner
 // expose provider-specific settings without widening the core interface).

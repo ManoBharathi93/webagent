@@ -6,6 +6,7 @@ package build
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"slices"
 
 	"github.com/TheAgent-net/webagent/action"
@@ -20,12 +21,34 @@ import (
 	"github.com/TheAgent-net/webagent/spec"
 )
 
+// Option configures Build. Using functional options keeps Build's signature stable as new
+// knobs are added over time (Go forbids compatible changes to an existing function signature).
+type Option func(*options)
+
+type options struct {
+	tools  []core.Tool
+	logger *slog.Logger
+}
+
+// WithTools injects extra tools in addition to the action provider's — e.g. a live MCP client
+// built with per-user auth the framework can't construct from a spec. All tools are guarded.
+func WithTools(tools ...core.Tool) Option {
+	return func(o *options) { o.tools = append(o.tools, tools...) }
+}
+
+// WithLogger sets the framework's structured logger. Without it, the framework logs nothing.
+func WithLogger(l *slog.Logger) Option {
+	return func(o *options) { o.logger = l }
+}
+
 // Build resolves the spec's picks across every slot — including the model (brain) and the
-// action provider — and wires them together. injected tools are extra tools supplied by the
-// caller (e.g. a live MCP client built with per-user auth the framework can't construct from
-// a spec); they are combined with the action provider's tools and all are guarded. Empty
-// picks resolve to slot defaults.
-func Build(ctx context.Context, s *spec.AgentSpec, injected []core.Tool) (*core.Agent, error) {
+// action provider — and wires them together. Empty picks resolve to slot defaults.
+func Build(ctx context.Context, s *spec.AgentSpec, opts ...Option) (*core.Agent, error) {
+	var o options
+	for _, opt := range opts {
+		opt(&o)
+	}
+
 	br, err := brain.Registry.Get(s.Model.Type, s.Model.Config)
 	if err != nil {
 		return nil, wrap(s, err)
@@ -51,7 +74,7 @@ func Build(ctx context.Context, s *spec.AgentSpec, injected []core.Tool) (*core.
 	if err != nil {
 		return nil, fmt.Errorf("%s: action provider %q: %w", s.Name, ap.Name(), err)
 	}
-	tools := slices.Concat(provTools, injected)
+	tools := slices.Concat(provTools, o.tools)
 
 	obs, err := observability.Registry.Get(s.Observability.Type, s.Observability.Config)
 	if err != nil {
@@ -83,6 +106,7 @@ func Build(ctx context.Context, s *spec.AgentSpec, injected []core.Tool) (*core.
 		Tools:    action.GuardAll(tools, guard),
 		Bindings: bindings,
 		Observer: obs,
+		Logger:   o.logger,
 	}, nil
 }
 

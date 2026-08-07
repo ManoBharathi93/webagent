@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"time"
 
@@ -77,7 +76,6 @@ func (h *httpChannel) Start(ctx context.Context, dispatch core.Dispatch) error {
 	})
 	srv := &http.Server{Addr: h.addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	go func() { <-ctx.Done(); _ = srv.Close() }()
-	log.Printf("channel %s listening on %s%s", h.name, h.addr, h.path)
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
@@ -94,7 +92,8 @@ func newStub(name string) spi.Constructor[core.Channel] {
 
 func (s *stub) Name() string { return s.name }
 
+// Start is inert: a stub channel accepts no traffic until a real adapter replaces it. It
+// returns nil so it never takes down the other (live) channels sharing the agent.
 func (s *stub) Start(context.Context, core.Dispatch) error {
-	log.Printf("channel %s: registered but %v — add credentials + adapter to activate", s.name, ErrNotConfigured)
 	return nil
 }

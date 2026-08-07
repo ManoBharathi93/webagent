@@ -10,6 +10,8 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"log/slog"
 	"time"
 )
 
@@ -255,6 +257,19 @@ type Agent struct {
 	Tools       []Tool
 	Bindings    []ChannelBinding
 	Observer    Observer
+	// Logger is the framework's structured logger. When nil, the framework logs nothing
+	// (a library must not impose output). Applications inject one to see operational logs.
+	Logger *slog.Logger
+}
+
+// discardLogger drops all records; used when no Logger is injected.
+var discardLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
+
+func (a *Agent) logger() *slog.Logger {
+	if a.Logger != nil {
+		return a.Logger
+	}
+	return discardLogger
 }
 
 // Handle runs one turn through the full pipeline: input guardrail → retrieve + recall →
@@ -363,6 +378,7 @@ func (a *Agent) Run(ctx context.Context) error {
 	errCh := make(chan error, len(a.Bindings))
 	for _, b := range a.Bindings {
 		b := b
+		a.logger().Info("channel starting", "channel", b.Channel.Name())
 		d := func(ctx context.Context, t Turn) (Payload, error) {
 			msg, err := a.Handle(ctx, t)
 			if err != nil {

@@ -11,8 +11,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 
@@ -46,7 +48,7 @@ func main() {
 		printSlot("observability", observability.Registry.Options(), observability.Registry.Default())
 	case "validate":
 		s := mustLoad()
-		a, err := build.Build(context.Background(), s, nil)
+		a, err := build.Build(context.Background(), s)
 		if err != nil {
 			log.Fatalf("build: %v", err)
 		}
@@ -64,12 +66,13 @@ func main() {
 		s := mustLoad()
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 		defer stop()
-		a, err := build.Build(ctx, s, nil)
+		logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+		a, err := build.Build(ctx, s, build.WithLogger(logger))
 		if err != nil {
 			log.Fatalf("build: %v", err)
 		}
-		log.Printf("serving %q with %d channel(s); Ctrl-C to stop", a.Name, len(a.Bindings))
-		if err := a.Run(ctx); err != nil && err != context.Canceled {
+		logger.Info("serving", "agent", a.Name, "channels", len(a.Bindings))
+		if err := a.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 			log.Fatalf("run: %v", err)
 		}
 	default:
