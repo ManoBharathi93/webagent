@@ -1,8 +1,8 @@
-// Command web-agent runs any business's web agent from its declarative spec.
+// Command webagent runs any business's web agent from its declarative spec.
 //
-//	web-agent options            list the slot menus (the palette a business picks from)
-//	web-agent validate <spec>    load a spec and resolve every chosen provider
-//	web-agent serve <spec>       build the agent and run its channels
+//	webagent options            list the slot menus (the palette a business picks from)
+//	webagent validate <spec>    load a spec and resolve every chosen provider
+//	webagent serve <spec>       build the agent and run its channels
 //
 // The action layer (MCP tools) is assumed to exist; this CLI runs the framework with the
 // model-free Echo brain and an empty toolset, so the template is demonstrable without live
@@ -107,6 +107,6 @@ func mustLoad() *spec.AgentSpec {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: web-agent options | validate <spec.json> | serve <spec.json>")
+	fmt.Fprintln(os.Stderr, "usage: webagent options | validate <spec.json> | serve <spec.json>")
 	os.Exit(2)
 }

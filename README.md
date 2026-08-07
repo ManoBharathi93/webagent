@@ -41,9 +41,9 @@ adapter, some as defaults). The SPI is the stable, versioned contract all three 
 ## CLI
 
 ```
-web-agent options            # the menu a business picks from (* = default)
-web-agent validate <spec>    # load a spec and resolve every chosen provider
-web-agent serve <spec>       # build the agent and run its channels
+webagent options            # the menu a business picks from (* = default)
+webagent validate <spec>    # load a spec and resolve every chosen provider
+webagent serve <spec>       # build the agent and run its channels
 ```
 
 The CLI runs with a model-free `Echo` brain and no live tools, so the template is
