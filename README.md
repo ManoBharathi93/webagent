@@ -40,15 +40,27 @@ adapter, some as defaults). The SPI is the stable, versioned contract all three 
 
 ## CLI
 
-```
+```sh
 webagent options            # the menu a business picks from (* = default)
 webagent validate <spec>    # load a spec and resolve every chosen provider
 webagent serve <spec>       # build the agent and run its channels
+webagent keys set openrouter  # store an API key (hidden prompt; 0600 in your config dir)
+webagent keys list | rm <name>
 ```
 
-The CLI runs with a model-free `Echo` brain and no live tools, so the template is
-demonstrable without credentials. Production injects the ADK/Gemini brain (or any model via
-the model adapter) and the MCP toolset.
+By default the CLI runs with the model-free `echo` brain and no live tools, so the template is
+demonstrable without credentials. To drive a real model, store a key and point the spec's
+`model` slot at it:
+
+```sh
+webagent keys set openrouter        # paste your OpenRouter key at the prompt
+# in the spec: "model": { "type": "openrouter", "config": { "model": "anthropic/claude-sonnet-5" } }
+webagent serve myspec.json
+```
+
+Keys are read from the environment at runtime (an exported env var always wins); `keys set`
+simply stores them in your OS config dir (mode `0600`) so you don't re-export each run. Keys
+are never written into a spec.
 
 ## Provider conformance
 

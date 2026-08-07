@@ -20,6 +20,8 @@ All notable changes are documented here. The format is based on
   observers, and an evaluation harness (`eval`).
 - Conformance kit for certifying providers; two example businesses (Zomato, a bakery).
 - `build.Build` functional options (`WithTools`, `WithLogger`); injected `*slog.Logger` seam.
+- CLI `keys set/list/rm` to store model API keys in the OS config dir (mode `0600`, hidden
+  prompt), auto-applied on `serve`; an exported env var still takes precedence.
 - Project hygiene: Apache-2.0 license, CI (fmt/vet/race/coverage/govulncheck/golangci-lint),
   and a compatibility policy.
 

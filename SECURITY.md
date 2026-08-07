@@ -21,7 +21,9 @@ Security-relevant properties of the framework that reviewers should know:
 - **Action safety is code-enforced.** Every tool call is routed through the guardrail *before*
   execution by `action.Guard`; the model cannot bypass it.
 - **Secrets are never read from a spec.** Providers take the *name* of an environment variable
-  in config and read the secret from the environment at runtime.
+  in config and read the secret from the environment at runtime. The `webagent keys` command
+  stores keys in the OS user config dir (mode `0600`), outside the repo, and loads them into the
+  environment at runtime; an exported env var always takes precedence.
 - **Traces may contain user content.** `core.TurnTrace` carries input/output text. Observers
   that export traces are responsible for redaction/retention appropriate to their environment;
   the built-in `log` observer does not emit input/output text.

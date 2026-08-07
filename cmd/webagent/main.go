@@ -37,6 +37,8 @@ func main() {
 		usage()
 	}
 	switch os.Args[1] {
+	case "keys":
+		runKeys(os.Args[2:])
 	case "options":
 		printSlot("model", brain.Registry.Options(), brain.Registry.Default())
 		printSlot("action", action.Registry.Options(), action.Registry.Default())
@@ -64,6 +66,7 @@ func main() {
 		}
 	case "serve":
 		s := mustLoad()
+		applyKeys() // load stored API keys into the environment (real exports still win)
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 		defer stop()
 		logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
@@ -107,6 +110,11 @@ func mustLoad() *spec.AgentSpec {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: webagent options | validate <spec.json> | serve <spec.json>")
+	fmt.Fprintln(os.Stderr, "usage:")
+	fmt.Fprintln(os.Stderr, "  webagent options                 list the provider menu per slot")
+	fmt.Fprintln(os.Stderr, "  webagent validate <spec.json>    resolve every chosen provider")
+	fmt.Fprintln(os.Stderr, "  webagent serve <spec.json>       build the agent and run its channels")
+	fmt.Fprintln(os.Stderr, "  webagent keys set <provider>     store an API key (e.g. openrouter)")
+	fmt.Fprintln(os.Stderr, "  webagent keys list | rm <name>   manage stored keys")
 	os.Exit(2)
 }
