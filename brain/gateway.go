@@ -133,7 +133,7 @@ func (g *gatewayBrain) complete(ctx context.Context, msgs []chatMessage, tools [
 	if err != nil {
 		return chatMessage{}, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= 300 {
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		return chatMessage{}, fmt.Errorf("gateway %s: %s", resp.Status, strings.TrimSpace(string(b)))

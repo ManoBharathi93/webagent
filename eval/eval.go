@@ -21,7 +21,7 @@ type Check func(res core.AgentMessage, tr core.TurnTrace, err error) error
 func NoError() Check {
 	return func(_ core.AgentMessage, _ core.TurnTrace, err error) error {
 		if err != nil {
-			return fmt.Errorf("unexpected error: %v", err)
+			return fmt.Errorf("unexpected error: %w", err)
 		}
 		return nil
 	}
