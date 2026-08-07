@@ -26,6 +26,7 @@ type AgentSpec struct {
 	Retrieval     ComponentSpec `json:"retrieval"`
 	Memory        ComponentSpec `json:"memory"`
 	Guardrail     ComponentSpec `json:"guardrail"`
+	Observability ComponentSpec `json:"observability"`
 	Channels      []ChannelSpec `json:"channels"`
 }
 

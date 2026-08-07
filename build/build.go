@@ -13,6 +13,7 @@ import (
 	"github.com/TheAgent-net/webagent/core"
 	"github.com/TheAgent-net/webagent/guardrail"
 	"github.com/TheAgent-net/webagent/memory"
+	"github.com/TheAgent-net/webagent/observability"
 	"github.com/TheAgent-net/webagent/present"
 	"github.com/TheAgent-net/webagent/retrieval"
 	"github.com/TheAgent-net/webagent/spec"
@@ -51,6 +52,11 @@ func Build(ctx context.Context, s *spec.AgentSpec, injected []core.Tool) (*core.
 	}
 	tools := append(provTools, injected...)
 
+	obs, err := observability.Registry.Get(s.Observability.Type, s.Observability.Config)
+	if err != nil {
+		return nil, wrap(s, err)
+	}
+
 	var bindings []core.ChannelBinding
 	for i, cs := range s.Channels {
 		p, err := present.Registry.Get(cs.Presenter, nil)
@@ -75,6 +81,7 @@ func Build(ctx context.Context, s *spec.AgentSpec, injected []core.Tool) (*core.
 		// the model cannot bypass this (it is code-enforced, not prompt-enforced).
 		Tools:    action.GuardAll(tools, guard),
 		Bindings: bindings,
+		Observer: obs,
 	}, nil
 }
 

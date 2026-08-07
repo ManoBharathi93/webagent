@@ -21,6 +21,7 @@ nobody forks the core.
 | Presenter | `Presenter` | text, terminal (QR), web | text |
 | Model | `Brain` | echo, openrouter, gateway (any OpenAI-compatible) | echo |
 | Action | `Provider` / `Tool` | none, demo (MCP/browser providers to come) | none |
+| Observability | `Observer` | none, log, memory (OTel exporter to come) | none |
 
 Every tool the agent holds — from the action provider or injected by the host — is wrapped by
 `action.Guard`, which runs the chosen guardrail on the action **before** it executes. The model

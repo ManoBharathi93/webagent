@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/TheAgent-net/webagent/core"
+	"github.com/TheAgent-net/webagent/observability"
 	"github.com/TheAgent-net/webagent/spec"
 )
 
@@ -79,5 +80,31 @@ func TestBuildResolvesActionProviderTools(t *testing.T) {
 	}
 	if len(a.Tools) != 1 || a.Tools[0].Name() != "echo" {
 		t.Fatalf("expected one guarded echo tool, got %v", a.Tools)
+	}
+}
+
+// A turn emits exactly one TurnTrace with the model, output, and per-step spans.
+func TestAgentEmitsTrace(t *testing.T) {
+	s, err := spec.Load("../examples/zomato.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := Build(context.Background(), s, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := observability.NewRecorder()
+	a.Observer = rec
+
+	if _, err := a.Handle(context.Background(), core.Turn{ChannelUserID: "u1", Text: "hi"}); err != nil {
+		t.Fatal(err)
+	}
+	recs := rec.Records()
+	if len(recs) != 1 {
+		t.Fatalf("expected exactly one trace, got %d", len(recs))
+	}
+	tr := recs[0]
+	if tr.Model != "echo" || tr.Output == "" || len(tr.Spans) == 0 {
+		t.Fatalf("trace missing model/output/spans: %+v", tr)
 	}
 }

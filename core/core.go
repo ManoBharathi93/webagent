@@ -10,6 +10,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"time"
 )
 
 // ---------------------------------------------------------------------------
@@ -207,6 +208,37 @@ type Brain interface {
 }
 
 // ---------------------------------------------------------------------------
+// Observability slot — a per-turn trace emitted to an Observer.
+// ---------------------------------------------------------------------------
+
+// Span is one timed step within a turn (e.g. "retrieve", "reason", "guard.output").
+type Span struct {
+	Name     string
+	Duration time.Duration
+}
+
+// TurnTrace is the observable record of one Handle call. Field names align with the
+// OpenTelemetry GenAI semantic conventions where applicable (e.g. Model = gen_ai.request.model),
+// so an OTel exporter provider maps cleanly without changing this type.
+type TurnTrace struct {
+	UserID  string
+	Model   string
+	Input   string
+	Output  string
+	Blocked bool   // a guardrail blocked the turn (at input or output)
+	Err     string // non-empty if the turn errored
+	Spans   []Span
+	Total   time.Duration
+}
+
+// Observer receives a TurnTrace after each turn. Providers record or export it (log, memory,
+// OpenTelemetry, a partner). A nil Observer disables tracing at zero cost.
+type Observer interface {
+	Name() string
+	Observe(ctx context.Context, t TurnTrace)
+}
+
+// ---------------------------------------------------------------------------
 // Agent — the assembled runtime.
 // ---------------------------------------------------------------------------
 
@@ -220,39 +252,71 @@ type Agent struct {
 	Guardrail   Guardrail
 	Tools       []Tool
 	Bindings    []ChannelBinding
+	Observer    Observer
 }
 
 // Handle runs one turn through the full pipeline: input guardrail → retrieve + recall →
-// reason → output guardrail → persist. Missing providers are simply skipped.
-func (a *Agent) Handle(ctx context.Context, t Turn) (AgentMessage, error) {
+// reason → output guardrail → persist. Missing providers are simply skipped. Each step is
+// timed and a single TurnTrace is emitted to the Observer when the turn returns.
+func (a *Agent) Handle(ctx context.Context, t Turn) (msg AgentMessage, err error) {
+	start := time.Now()
+	tr := TurnTrace{UserID: t.ChannelUserID, Input: t.Text}
+	if a.Brain != nil {
+		tr.Model = a.Brain.Name()
+	}
+	defer func() {
+		tr.Total = time.Since(start)
+		tr.Output = msg.Text
+		if err != nil {
+			tr.Err = err.Error()
+		}
+		if a.Observer != nil {
+			a.Observer.Observe(ctx, tr)
+		}
+	}()
+
 	scope := Scope{UserID: t.ChannelUserID}
 
 	if a.Guardrail != nil {
-		if d, err := a.Guardrail.Inspect(ctx, GuardInput{Stage: StageInput, Content: t.Text, Meta: t.Meta}); err == nil && !d.Allow {
+		s := time.Now()
+		d, gerr := a.Guardrail.Inspect(ctx, GuardInput{Stage: StageInput, Content: t.Text, Meta: t.Meta})
+		tr.Spans = append(tr.Spans, Span{Name: "guard.input", Duration: time.Since(s)})
+		if gerr == nil && !d.Allow {
+			tr.Blocked = true
 			return AgentMessage{Text: "I can't help with that: " + d.Reason}, nil
 		}
 	}
 
 	var cands []Candidate
 	if a.Retriever != nil {
+		s := time.Now()
 		cands, _ = a.Retriever.Retrieve(ctx, Query{Text: t.Text, UserID: t.ChannelUserID}, 8)
+		tr.Spans = append(tr.Spans, Span{Name: "retrieve", Duration: time.Since(s)})
 	}
 	var mems []MemoryItem
 	if a.Memory != nil {
+		s := time.Now()
 		mems, _ = a.Memory.Recall(ctx, scope, t.Text, 8)
+		tr.Spans = append(tr.Spans, Span{Name: "recall", Duration: time.Since(s)})
 	}
 
-	msg, err := a.Brain.Respond(ctx, BrainInput{
+	reason := time.Now()
+	msg, err = a.Brain.Respond(ctx, BrainInput{
 		UserID: t.ChannelUserID, Text: t.Text, Instruction: a.Instruction,
 		Candidates: cands, Memories: mems, Tools: a.Tools,
 	})
+	tr.Spans = append(tr.Spans, Span{Name: "reason", Duration: time.Since(reason)})
 	if err != nil {
 		return AgentMessage{}, err
 	}
 
 	if a.Guardrail != nil {
-		if d, gerr := a.Guardrail.Inspect(ctx, GuardInput{Stage: StageOutput, Content: msg.Text, Meta: t.Meta}); gerr == nil {
+		s := time.Now()
+		d, gerr := a.Guardrail.Inspect(ctx, GuardInput{Stage: StageOutput, Content: msg.Text, Meta: t.Meta})
+		tr.Spans = append(tr.Spans, Span{Name: "guard.output", Duration: time.Since(s)})
+		if gerr == nil {
 			if !d.Allow {
+				tr.Blocked = true
 				return AgentMessage{Text: "(response withheld: " + d.Reason + ")"}, nil
 			}
 			if d.Content != "" {

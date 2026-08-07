@@ -22,6 +22,7 @@ import (
 	"github.com/TheAgent-net/webagent/channels"
 	"github.com/TheAgent-net/webagent/guardrail"
 	"github.com/TheAgent-net/webagent/memory"
+	"github.com/TheAgent-net/webagent/observability"
 	"github.com/TheAgent-net/webagent/present"
 	"github.com/TheAgent-net/webagent/retrieval"
 	"github.com/TheAgent-net/webagent/spec"
@@ -42,6 +43,7 @@ func main() {
 		printSlot("guardrail", guardrail.Registry.Options(), guardrail.Registry.Default())
 		printSlot("channel", channels.Registry.Options(), channels.Registry.Default())
 		printSlot("presenter", present.Registry.Options(), present.Registry.Default())
+		printSlot("observability", observability.Registry.Options(), observability.Registry.Default())
 	case "validate":
 		s := mustLoad()
 		a, err := build.Build(context.Background(), s, nil)
@@ -54,6 +56,7 @@ func main() {
 		fmt.Printf("  retrieval : %s\n", a.Retriever.Name())
 		fmt.Printf("  memory    : %s\n", a.Memory.Name())
 		fmt.Printf("  guardrail : %s\n", a.Guardrail.Name())
+		fmt.Printf("  observ.   : %s\n", a.Observer.Name())
 		for _, b := range a.Bindings {
 			fmt.Printf("  channel   : %s (presenter=%s)\n", b.Channel.Name(), b.Presenter.Name())
 		}
