@@ -33,10 +33,14 @@ adapter, some as defaults). The SPI is the stable, versioned contract all three 
 
 ## Two example businesses, zero shared code
 
+Both examples use the offline-friendly `demo` action provider (no network) so
+`validate`/`serve` work without credentials or a live MCP. Swap in `"provider": "mcp"`
+and an `mcpUrl` when you have a real server (see below).
+
 - [`examples/zomato.json`](examples/zomato.json) — food delivery: `live` retrieval, `a2a` +
-  `whatsapp`.
+  `whatsapp` (stub until adapter).
 - [`examples/bakery.json`](examples/bakery.json) — a bakery: `keyword` retrieval over its own
-  catalog, `web` + `slack`.
+  catalog, `web` + `slack` (stub until adapter).
 
 ## CLI
 
@@ -94,10 +98,13 @@ Complete and green (build/vet/test):
   Guardrail partner slots, conformance kit, spec v1, two example businesses.
 - **Phase 2 — model-agnostic brain:** `openrouter`/`gateway` OpenAI-compatible providers with a
   tool-calling loop; `echo` default.
-- **Phase 3 — action layer:** pluggable action-provider slot, and every tool call routed through
-  the guardrail before it executes (deterministic, code-enforced safety).
+- **Phase 3 — action layer:** pluggable action-provider slot (`none` / `demo` / `mcp`), and every
+  tool call routed through the guardrail before it executes (deterministic, code-enforced safety).
 - **Phase 4 — observability + eval:** per-turn `TurnTrace` (OTel GenAI-aligned) to a pluggable
   observer (none/log/memory), and an [`eval/`](eval/eval.go) harness (scenarios + checks).
 
-Remaining (see [DESIGN.md](DESIGN.md)): concrete MCP/browser action providers, an OpenTelemetry
-exporter, partner adapters (memory/guardrail), multi-tenant identity/billing.
+**Works today:** echo/openrouter/gateway brains; `mcp` over Streamable HTTP (JSON + SSE,
+bearer/api-key); HTTP `a2a`/`web` channels; GuardAll; TurnTrace; `keys` CLI.
+
+**Not yet:** browser action provider; OAuth-gated MCP; OTel exporter; live WhatsApp/Telegram/Slack
+adapters; partner memory/guardrail adapters; multi-tenant identity/billing. See [DESIGN.md](DESIGN.md).

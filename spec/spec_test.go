@@ -10,7 +10,7 @@ func TestLoadValidExample(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.Name == "" || s.Action.MCPURL == "" || len(s.Channels) == 0 {
+	if s.Name == "" || s.Action.Provider == "" || len(s.Channels) == 0 {
 		t.Fatalf("expected a populated spec, got %+v", s)
 	}
 }

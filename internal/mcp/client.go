@@ -168,7 +168,7 @@ func (c *Client) initialize(ctx context.Context) error {
 	params := map[string]any{
 		"protocolVersion": protocolVersion,
 		"capabilities":    map[string]any{},
-		"clientInfo":      map[string]any{"name": "webagent", "version": "0.1.0"},
+		"clientInfo":      map[string]any{"name": "webagent", "version": "0.2.0"},
 	}
 	_, hdr, err := c.send(ctx, "initialize", params, c.nextID())
 	if err != nil {

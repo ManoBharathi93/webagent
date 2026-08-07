@@ -2,12 +2,9 @@
   "schemaVersion": "1",
   "name": "Sunrise Bakery Assistant",
   "business": "Neighborhood bakery",
-  "instruction": "Help customers pick and order baked goods. Suggest pairings, respect dietary notes, and confirm the order before placing it.",
+  "instruction": "Help customers pick and order baked goods. Suggest pairings, respect dietary notes, and confirm the order before placing it. Use the available tools when they help.",
   "brand": { "primaryColor": "#C08457", "logo": "" },
-  "action": {
-    "mcpUrl": "https://bakery.example.com/mcp",
-    "authBaseUrl": "https://bakery.example.com"
-  },
+  "action": { "provider": "demo" },
   "retrieval": {
     "type": "keyword",
     "config": {
