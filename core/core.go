@@ -372,8 +372,12 @@ func span(name string, start time.Time, err error) Span {
 }
 
 // Run starts every channel binding concurrently and blocks until ctx is done or a channel
-// returns an error. Each channel gets a Dispatch that handles the turn and renders it via
-// that binding's presenter.
+// fails with a non-nil error. Each channel gets a Dispatch that handles the turn and renders
+// it via that binding's presenter.
+//
+// A channel that returns nil has stopped cleanly (an inert stub channel, or a live channel
+// closed by ctx cancellation) and must NOT tear down the others — otherwise a single stub
+// channel in the spec would kill the whole agent. Only a non-nil error aborts.
 func (a *Agent) Run(ctx context.Context) error {
 	errCh := make(chan error, len(a.Bindings))
 	for _, b := range a.Bindings {
@@ -388,11 +392,16 @@ func (a *Agent) Run(ctx context.Context) error {
 		}
 		go func() { errCh <- b.Channel.Start(ctx, d) }()
 	}
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case err := <-errCh:
-		return err
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case err := <-errCh:
+			if err != nil {
+				return err
+			}
+			// A channel stopped cleanly; keep serving the rest until ctx is done.
+		}
 	}
 }
 

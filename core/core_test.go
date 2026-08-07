@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 )
 
 type stubBrain struct{ reply string }
@@ -152,5 +153,53 @@ func TestHandleRecordsRememberError(t *testing.T) {
 	}
 	if !spanErr(obs.last.Spans, "persist") {
 		t.Fatal("persist span should record the memory Remember error")
+	}
+}
+
+// inertChannel returns nil immediately, like a stub channel.
+type inertChannel struct{}
+
+func (inertChannel) Name() string                          { return "inert" }
+func (inertChannel) Start(context.Context, Dispatch) error { return nil }
+
+// liveChannel blocks until ctx is cancelled, then stops cleanly (nil), like an HTTP channel.
+type liveChannel struct{ started chan struct{} }
+
+func (c liveChannel) Name() string { return "live" }
+func (c liveChannel) Start(ctx context.Context, _ Dispatch) error {
+	close(c.started)
+	<-ctx.Done()
+	return nil
+}
+
+// Regression: a stub channel returning nil immediately must NOT cause Run to tear down the
+// still-serving live channel. Run should block until ctx is cancelled.
+func TestRunStubDoesNotStopLiveChannel(t *testing.T) {
+	started := make(chan struct{})
+	a := &Agent{Bindings: []ChannelBinding{
+		{Channel: inertChannel{}},
+		{Channel: liveChannel{started: started}},
+	}}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- a.Run(ctx) }()
+
+	select {
+	case <-started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("live channel never started")
+	}
+	// Run must still be blocked even though the inert channel already returned nil.
+	select {
+	case err := <-done:
+		t.Fatalf("Run returned early (%v) while a channel is still serving", err)
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Run did not return after ctx cancellation")
 	}
 }
