@@ -90,7 +90,7 @@ func (r Report) Summary() string { return fmt.Sprintf("passed %d, failed %d", r.
 // it. Run installs it for the run and restores the agent's prior observer afterward.
 type capture struct{ last core.TurnTrace }
 
-func (*capture) Name() string                             { return "eval-capture" }
+func (*capture) Name() string                                  { return "eval-capture" }
 func (c *capture) Observe(_ context.Context, t core.TurnTrace) { c.last = t }
 
 // Run executes each scenario against the agent and returns a Report. Scenarios run

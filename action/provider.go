@@ -33,8 +33,8 @@ func init() {
 
 type none struct{}
 
-func (none) Name() string                                { return "none" }
-func (none) Tools(context.Context) ([]core.Tool, error)  { return nil, nil }
+func (none) Name() string                               { return "none" }
+func (none) Tools(context.Context) ([]core.Tool, error) { return nil, nil }
 
 type demo struct{}
 

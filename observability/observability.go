@@ -36,7 +36,7 @@ func init() {
 
 type none struct{}
 
-func (none) Name() string                          { return "none" }
+func (none) Name() string                            { return "none" }
 func (none) Observe(context.Context, core.TurnTrace) {}
 
 // logObserver emits one compact, OTel-GenAI-flavored JSON line per turn.

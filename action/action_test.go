@@ -26,10 +26,10 @@ func (b benignTool) Call(context.Context, map[string]any) (map[string]any, error
 
 type schemaTool struct{}
 
-func (schemaTool) Name() string                                             { return "lookup" }
+func (schemaTool) Name() string                                                 { return "lookup" }
 func (schemaTool) Call(context.Context, map[string]any) (map[string]any, error) { return nil, nil }
-func (schemaTool) Description() string                                      { return "look things up" }
-func (schemaTool) Schema() map[string]any                                   { return map[string]any{"type": "object"} }
+func (schemaTool) Description() string                                          { return "look things up" }
+func (schemaTool) Schema() map[string]any                                       { return map[string]any{"type": "object"} }
 
 // The core safety property: a blocked action NEVER executes. Enforced in the wrapper, so the
 // model cannot route around it.
