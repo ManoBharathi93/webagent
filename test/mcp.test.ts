@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { Harness } from "../src/cake/harness.ts";
-import { intake } from "../src/cake/intake.ts";
-import { mcp } from "../src/cake/mcp.ts";
+import { Harness } from "../src/harness.ts";
+import { intake } from "../src/intake.ts";
+import { mcp } from "../src/mcp.ts";
 
 type Rpc = { jsonrpc: string; id: unknown; result?: unknown; error?: { code: number; message: string } };
 

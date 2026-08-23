@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
-import { defaultHarness } from "./cake/harness.ts";
-import { intake } from "./cake/intake.ts";
+import { defaultHarness } from "./harness.ts";
+import { intake } from "./intake.ts";
 
 const args = process.argv.slice(2);
 const h = defaultHarness();

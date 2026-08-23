@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { Assembler } from "../src/cake/assembler.ts";
-import { Context } from "../src/cake/context.ts";
-import { Harness } from "../src/cake/harness.ts";
-import { intake } from "../src/cake/intake.ts";
-import type { Model } from "../src/cake/models.ts";
-import type { Tool } from "../src/cake/tools.ts";
+import { Assembler } from "../src/assembler.ts";
+import { Context } from "../src/context.ts";
+import { Harness } from "../src/harness.ts";
+import { intake } from "../src/intake.ts";
+import type { Model } from "../src/models.ts";
+import type { Tool } from "../src/tools.ts";
 
 describe("assembler", () => {
   test("parses tool JSON once at end, not per chunk", () => {
