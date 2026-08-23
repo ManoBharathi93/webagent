@@ -1,5 +1,9 @@
 # webagent
 
+**Harness (new):** a layered cake — intake → scheduler → loop → controls → policy → extensions.
+No slots. Many runs in parallel. You choose the model (`useModel` / `getAvailableModels`).
+`bun test` / `bun src/cli.ts models` / `bun src/cli.ts ask hello`.
+
 An **AgentNet** project: a framework any business uses to stand up a production-grade
 web/business agent from a **declarative spec** — pick a provider for each slot from a menu,
 get a running agent. See [DESIGN.md](DESIGN.md) for the full architecture and roadmap.

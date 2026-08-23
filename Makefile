@@ -1,4 +1,8 @@
-.PHONY: all fmt fmt-check vet lint test race cover tidy vuln ci
+.PHONY: all fmt fmt-check vet lint test race cover tidy vuln ci harness-test
+
+harness-test:
+	bun test
+	bunx tsc --noEmit
 
 all: fmt vet test
 
