@@ -9,7 +9,7 @@ if (!args[0] || args[0] === "help") {
   console.error("usage:");
   console.error("  webagent models              list available models");
   console.error("  webagent ask <text>          one echo run");
-  console.error("  webagent serve [addr]        intake HTTP (default :8787)");
+  console.error("  webagent serve [addr]        intake HTTP + MCP (default :8787)");
   process.exit(args[0] ? 0 : 2);
 }
 
@@ -31,7 +31,7 @@ switch (args[0]) {
     const addr = args[1] || ":8787";
     const port = Number(addr.replace(/^.*:/, "")) || 8787;
     Bun.serve({ port, fetch: intake(h) });
-    console.error(`intake on :${port}  POST /runs  GET /models  GET /health`);
+    console.error(`intake on :${port}  POST /runs  GET /models  GET /health  POST /mcp`);
     await new Promise(() => {});
     break;
   }

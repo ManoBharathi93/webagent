@@ -2,6 +2,7 @@
 
 **Harness (new):** a layered cake — intake → scheduler → loop → controls → policy → extensions.
 No slots. Many runs in parallel. You choose the model (`useModel` / `getAvailableModels`).
+The same verbs are on Streamable HTTP MCP at `POST /mcp` (`2025-06-18`, session id, JSON + SSE).
 `bun test` / `bun src/cli.ts models` / `bun src/cli.ts ask hello`.
 
 An **AgentNet** project: a framework any business uses to stand up a production-grade

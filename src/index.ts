@@ -2,6 +2,7 @@ export { Assembler } from "./cake/assembler.ts";
 export { Context, type Message } from "./cake/context.ts";
 export { Harness, defaultHarness } from "./cake/harness.ts";
 export { intake } from "./cake/intake.ts";
+export { mcp, MCP_PROTOCOL } from "./cake/mcp.ts";
 export { echoModel, openaiModel, type Model, type ModelInfo } from "./cake/models.ts";
 export { Run, type CreateOpts, type Explain } from "./cake/run.ts";
 export { Scheduler } from "./cake/scheduler.ts";
