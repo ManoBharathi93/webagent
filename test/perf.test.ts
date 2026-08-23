@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { Assembler } from "./cake/assembler.ts";
-import { Context } from "./cake/context.ts";
-import { Harness } from "./cake/harness.ts";
-import type { Model } from "./cake/models.ts";
-import { Scheduler } from "./cake/scheduler.ts";
+import { Assembler } from "../src/cake/assembler.ts";
+import { Context } from "../src/cake/context.ts";
+import { Harness } from "../src/cake/harness.ts";
+import type { Model } from "../src/cake/models.ts";
+import { Scheduler } from "../src/cake/scheduler.ts";
 
 describe("perf: assembler", () => {
   test("JSON.parse runs once at end, never per chunk", () => {
