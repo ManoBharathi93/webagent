@@ -12,7 +12,8 @@
   },
   "scripts": {
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "bench": "bun bench/run.ts"
   },
   "engines": {
     "bun": ">=1.1.0"

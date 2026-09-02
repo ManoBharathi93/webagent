@@ -11,6 +11,7 @@ service-account*
 # local runtime state
 .tokens.json
 .profiles.json
+bench/last-report.json
 
 # graphify — commit the graph; keep machine-local cache/cost out of git
 graphify-out/cost.json
