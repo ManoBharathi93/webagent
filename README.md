@@ -98,7 +98,7 @@ import { Harness, defaultHarness, intake, mcp } from "webagent";
 ```sh
 bun src/cli.ts models
 bun src/cli.ts ask hello
-bun src/cli.ts serve          # http://127.0.0.1:8787
+bun src/cli.ts serve          # public URL — humans get a page, machines get MCP
 ```
 
 ```ts
@@ -150,11 +150,13 @@ The pack has `flows`, `facts`, `instruction`, and `starterQuestions` for the pub
 | --- | --- |
 | `bun src/cli.ts models` | List registered models and ready state |
 | `bun src/cli.ts ask <text>` | One `echo` run |
-| `bun src/cli.ts serve [addr]` | Intake HTTP + MCP (default `:8787`) |
+| `bun src/cli.ts serve [addr]` | Host the public agent (default `:8787`) |
 | `bun src/cli.ts ingest <url>` | Crawl a site, build flows, attach a run |
 | `bun src/cli.ts help` | Usage |
 
-`serve` is `Bun.serve` over [`intake`](src/intake.ts). No reasoning happens at the edge.
+`serve` binds [`listen`](src/host/listen.ts). Browsers get a chat page. Machines get `/mcp` and `/agent.json`. Both use the same run.
+
+Set `WEBAGENT_PUBLIC_URL=https://your.domain` behind a TLS proxy, or `WEBAGENT_TLS_CERT` + `WEBAGENT_TLS_KEY` for HTTPS on the process.
 
 ## Architecture
 
@@ -304,6 +306,11 @@ Verdict: `"allow"` | `"deny"` | `{ redirect: { model?: string; tool?: string } }
 
 | Method | Path | Body / notes |
 | --- | --- | --- |
+| `GET` | `/` | Human: chat page. Machine: agent card (`url`, `mcp`, `runId`) |
+| `GET` | `/agent.json` | Same card (always machine-shaped) |
+| `POST` | `/chat` | `{ text }` into the shared room |
+| `GET` | `/live` | SSE for the page and the machine |
+| `GET` | `/who` | `{ kind, runId }` |
 | `GET` | `/models` | Registered models |
 | `GET` | `/health` | Inflight, run count, counts by state |
 | `POST` | `/runs` | `{ "text"?: string, "model"?: string }` — create, inject, start (`model` defaults to `echo` here) |
@@ -383,6 +390,7 @@ Perf tests in [`test/perf.test.ts`](test/perf.test.ts) assert those invariants.
 
 ```
 src/                 harness (flat)
+  host/              HTTPS listen, human vs machine, shared room
   site/              crawl → flows → pack → attach (on top of the loop)
   index.ts           public exports
   cli.ts             models | ask | serve | ingest
@@ -402,6 +410,9 @@ test/
   harness.test.ts
   mcp.test.ts
   perf.test.ts
+  host.test.ts
+  site.test.ts
+  bench.smoke.test.ts
 ```
 
 ## Testing

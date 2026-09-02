@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { defaultHarness } from "./harness.ts";
-import { intake } from "./intake.ts";
+import { listen } from "./host/listen.ts";
 
 const args = process.argv.slice(2);
 const h = defaultHarness();
@@ -9,7 +9,7 @@ if (!args[0] || args[0] === "help") {
   console.error("usage:");
   console.error("  webagent models              list available models");
   console.error("  webagent ask <text>          one echo run");
-  console.error("  webagent serve [addr]        intake HTTP + MCP (default :8787)");
+  console.error("  webagent serve [addr]        public HTTPS host (default :8787)");
   console.error("  webagent ingest <url>        crawl a site, build flows, attach a run");
   process.exit(args[0] ? 0 : 2);
 }
@@ -51,8 +51,10 @@ switch (args[0]) {
   case "serve": {
     const addr = args[1] || ":8787";
     const port = Number(addr.replace(/^.*:/, "")) || 8787;
-    Bun.serve({ port, fetch: intake(h) });
-    console.error(`intake on :${port}  POST /runs  POST /sites  GET /models  GET /health  POST /mcp`);
+    const hosted = listen(h, { port });
+    console.error(`agent ${hosted.url}`);
+    console.error(`  human   ${hosted.url}/`);
+    console.error(`  machine ${hosted.url}/mcp  run ${hosted.room.run.id}`);
     await new Promise(() => {});
     break;
   }
