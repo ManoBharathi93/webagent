@@ -57,6 +57,7 @@ function questionsFrom(pages: PageShot[], flows: ReturnType<typeof inferFlows>):
     if (f.id === "checkout") qs.push("How does booking or checkout work?");
     if (f.id === "change") qs.push("How do I change or cancel something I already booked?");
     if (f.id === "support") qs.push("Where do I get help or read the policy?");
+    if (f.id === "quote") qs.push("How do I get a quote and what does coverage cost?");
   }
   for (const p of pages) {
     for (const h of p.headings.slice(0, 3)) {

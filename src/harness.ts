@@ -1,3 +1,4 @@
+import { cursorModel } from "./cursor.ts";
 import { echoModel, ModelShelf, openaiModel, type Model, type ModelInfo } from "./models.ts";
 import { Run, type CreateOpts, type Explain } from "./run.ts";
 import { Scheduler } from "./scheduler.ts";
@@ -93,6 +94,7 @@ export class Harness {
 
 export function defaultHarness(): Harness {
   const h = new Harness();
+  h.addModel(cursorModel());
   if (process.env.OPENROUTER_API_KEY) {
     h.addModel(
       openaiModel({

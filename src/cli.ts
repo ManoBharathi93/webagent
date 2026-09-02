@@ -11,6 +11,7 @@ if (!args[0] || args[0] === "help") {
   console.error("  webagent ask <text>          one echo run");
   console.error("  webagent serve [addr]        public HTTPS host (default :8787)");
   console.error("  webagent ingest <url>        crawl a site, build flows, attach a run");
+  console.error("  webagent pair <url>          two agents: site seller + buyer (Cursor SDK)");
   process.exit(args[0] ? 0 : 2);
 }
 
@@ -46,6 +47,29 @@ switch (args[0]) {
     }
     const run = job.pack.pages.length ? attachPack(h, job.pack, { model: "echo" }) : undefined;
     console.log(JSON.stringify({ id: job.id, runId: run?.id, pack: job.pack }, null, 2));
+    break;
+  }
+  case "pair": {
+    const url = args[1] || "https://www.corgi.insure";
+    const { runPair, asMarkdown } = await import("../experiment/run.ts");
+    const report = await runPair({
+      site: url,
+      maxPages: 40,
+      sellerPort: 8787,
+      buyerPort: 8788,
+      out: "experiment/last-report.json",
+      keep: args.includes("--keep"),
+      model: "auto",
+    });
+    console.log(asMarkdown(report));
+    if (!args.includes("--keep")) {
+      report.seller.stop();
+      report.buyer.stop();
+    } else {
+      console.error("seller " + report.seller.url);
+      console.error("buyer  " + report.buyer.url);
+      await new Promise(() => {});
+    }
     break;
   }
   case "serve": {

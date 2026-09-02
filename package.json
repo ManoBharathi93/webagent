@@ -13,7 +13,11 @@
   "scripts": {
     "test": "bun test",
     "typecheck": "tsc --noEmit",
-    "bench": "bun bench/run.ts"
+    "bench": "bun bench/run.ts",
+    "pair": "bun experiment/run.ts"
+  },
+  "dependencies": {
+    "@cursor/sdk": "^1.0.30"
   },
   "engines": {
     "bun": ">=1.1.0"

@@ -25,6 +25,7 @@ Products sit on top. They do not plug providers into a menu.
 [Controls](#controls) ·
 [HTTP](#http) ·
 [MCP](#mcp) ·
+[Pair experiment](#pair-experiment) ·
 [Contributing](#contributing)
 
 </div>
@@ -46,6 +47,7 @@ Products sit on top. They do not plug providers into a menu.
 - [Hooks](#hooks)
 - [HTTP](#http)
 - [MCP](#mcp)
+- [Pair experiment](#pair-experiment)
 - [Configuration](#configuration)
 - [Efficiency](#efficiency)
 - [Project layout](#project-layout)
@@ -75,7 +77,7 @@ Most agent kits hide the loop behind a spec or a plugin slot. **webagent** expos
 | Fail-closed policy | `transfer_funds`, `delete_account`, `wipe`, `drop_database` never execute. |
 | Hooks | `allow` / `deny` / `{ redirect: { model?, tool? } }` around reason and tools. |
 | MCP | Spec `2025-06-18`, session id, JSON + SSE. Tools are the public verbs only. |
-| Built-in models | `echo` (always ready). `openrouter` listed; ready when `OPENROUTER_API_KEY` is set. |
+| Built-in models | `echo` (always ready). `cursor` via `@cursor/sdk` when `CURSOR_API_KEY` is set. `openrouter` when `OPENROUTER_API_KEY` is set. |
 
 ## Install
 
@@ -152,6 +154,7 @@ The pack has `flows`, `facts`, `instruction`, and `starterQuestions` for the pub
 | `bun src/cli.ts ask <text>` | One `echo` run |
 | `bun src/cli.ts serve [addr]` | Host the public agent (default `:8787`) |
 | `bun src/cli.ts ingest <url>` | Crawl a site, build flows, attach a run |
+| `bun src/cli.ts pair <url>` | Two hosts: site seller + buyer. Cursor SDK when `CURSOR_API_KEY` is set |
 | `bun src/cli.ts help` | Usage |
 
 `serve` binds [`listen`](src/host/listen.ts). Browsers get a chat page. Machines get `/mcp` and `/agent.json`. Both use the same run.
@@ -241,6 +244,7 @@ h.addModel({
 | Built-in | Ready | Notes |
 | --- | --- | --- |
 | `echo` | always | Deterministic. No network. |
+| `cursor` | if `CURSOR_API_KEY` | `@cursor/sdk` `Agent.prompt`. Cursor tools stay empty. The loop still owns tools. |
 | `openrouter` | if `OPENROUTER_API_KEY` | OpenAI-compatible. Added by `defaultHarness()`. |
 
 `getAvailableModels()` still lists models that are not ready (`ready: false` + `reason`).
@@ -365,10 +369,26 @@ Streamable HTTP, protocol **`2025-06-18`**. House style: session id after `initi
 
 Subsequent requests send `Mcp-Session-Id`. `ping` is supported.
 
+## Pair experiment
+
+Two **separate** harnesses and two listen ports. The seller is the crawled site. The buyer talks to the seller as a machine (`POST /chat`, `x-agent`).
+
+```sh
+export CURSOR_API_KEY=…          # optional — without it the script model still runs the pair
+bun experiment/run.ts --site https://www.corgi.insure
+# or: bun src/cli.ts pair https://www.corgi.insure
+```
+
+Writes `experiment/last-report.json` and `.md` (gitignored): crawl hops, both agent cards, each turn’s seller and buyer text, HTTP hops (human vs machine), Cursor SDK calls when the key is set.
+
+Choosing `cursor` is a `useModel` control. The loop does not change.
+
 ## Configuration
 
 | Variable | Used by | Default |
 | --- | --- | --- |
+| `CURSOR_API_KEY` | `defaultHarness()` / `cursorModel` | unset → `cursor` listed, not ready |
+| `CURSOR_MODEL` | Cursor model id | `composer-2.5` |
 | `OPENROUTER_API_KEY` | `defaultHarness()` / `openaiModel` | unset → `openrouter` listed, not ready |
 | `OPENROUTER_MODEL` | OpenRouter model id | `openai/gpt-4o-mini` |
 
@@ -401,6 +421,7 @@ src/                 harness (flat)
   context.ts         copy-on-write messages
   scheduler.ts       in-flight cap
   models.ts          echo + openai-compatible
+  cursor.ts          Cursor SDK model
   tools.ts           shelf
   policy.ts          fail-closed names
   hooks.ts           verdicts
@@ -413,6 +434,9 @@ test/
   host.test.ts
   site.test.ts
   bench.smoke.test.ts
+  cursor.test.ts
+  pair.test.ts
+experiment/          two-agent crawl + network report
 ```
 
 ## Testing

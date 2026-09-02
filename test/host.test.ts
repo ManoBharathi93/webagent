@@ -77,6 +77,34 @@ describe("host route + shared room", () => {
     expect(ctx).toContain("[machine] hello from machine");
   });
 
+  test("room can wrap an existing run", async () => {
+    const h = new Harness();
+    const run = h.create({ model: "echo", instruction: "pack agent" });
+    run.inject({ text: "from pack" });
+    const room = new Room(h, { run, model: "echo" });
+    expect(room.run.id).toBe(run.id);
+    const ex = await room.say("human", "ping");
+    expect(ex.lastText).toContain("ping");
+    expect(room.run.getContext().some((m) => m.content === "from pack")).toBe(true);
+  });
+
+  test("listen records hops without reading SSE", async () => {
+    const h = new Harness();
+    const hops: { path: string; kind: string; status: number }[] = [];
+    const hosted = listen(h, {
+      port: 0,
+      hostname: "127.0.0.1",
+      onHop: (hop) => hops.push({ path: hop.path, kind: hop.kind, status: hop.status }),
+    });
+    try {
+      const card = await fetch(hosted.url + "/agent.json", { headers: { accept: "application/json", "user-agent": "curl/8" } });
+      expect(card.ok).toBe(true);
+      expect(hops.some((x) => x.path === "/agent.json" && x.kind === "machine" && x.status === 200)).toBe(true);
+    } finally {
+      hosted.stop();
+    }
+  });
+
   test("listen prints an http URL and serves the card", async () => {
     const h = new Harness();
     const hosted = listen(h, { port: 0, hostname: "127.0.0.1" });

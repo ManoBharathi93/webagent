@@ -1,12 +1,18 @@
 import type { Harness } from "../harness.ts";
+import type { Run } from "../run.ts";
 import { host } from "./host.ts";
+import { tapFetch, type Hop } from "./hop.ts";
 import { Room } from "./room.ts";
+
+export type { Hop } from "./hop.ts";
 
 export interface ListenOpts {
   port?: number;
   hostname?: string;
   model?: string;
   publicUrl?: string;
+  run?: Run;
+  onHop?: (hop: Hop) => void;
 }
 
 export interface Hosted {
@@ -19,7 +25,7 @@ export interface Hosted {
 export function listen(harness: Harness, opts: ListenOpts = {}): Hosted {
   const port = opts.port ?? 8787;
   const hostname = opts.hostname ?? "0.0.0.0";
-  const room = new Room(harness, opts.model ?? "echo");
+  const room = new Room(harness, { model: opts.model ?? "echo", run: opts.run });
   const tls = tlsEnv();
   const localProto = tls ? "https" : "http";
   const printed =
@@ -31,7 +37,7 @@ export function listen(harness: Harness, opts: ListenOpts = {}): Hosted {
     port,
     hostname,
     tls,
-    fetch: host(harness, room, printed),
+    fetch: opts.onHop ? tapFetch(host(harness, room, printed), opts.onHop) : host(harness, room, printed),
   });
   const bound = opts.publicUrl?.replace(/\/+$/, "") ||
     process.env.WEBAGENT_PUBLIC_URL?.replace(/\/+$/, "") ||

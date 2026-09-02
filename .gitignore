@@ -12,6 +12,8 @@ service-account*
 .tokens.json
 .profiles.json
 bench/last-report.json
+experiment/last-report.json
+experiment/last-report.md
 
 # graphify — commit the graph; keep machine-local cache/cost out of git
 graphify-out/cost.json

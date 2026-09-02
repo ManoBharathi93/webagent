@@ -14,16 +14,27 @@ export interface RoomEvent {
   runId?: string;
 }
 
+export interface RoomOpts {
+  model?: string;
+  run?: Run;
+  instruction?: string;
+}
+
+const ROOM_INSTRUCTION =
+  "You are the public agent. Humans use the web page. Machines use MCP or JSON. Answer both. Be brief.";
+
 export class Room {
   readonly run: Run;
   private readonly live = new Set<(ev: RoomEvent) => void>();
 
-  constructor(private readonly harness: Harness, model = "echo") {
-    this.run = harness.create({
-      model,
-      instruction:
-        "You are the public agent. Humans use the web page. Machines use MCP or JSON. Answer both. Be brief.",
-    });
+  constructor(private readonly harness: Harness, modelOrOpts: string | RoomOpts = "echo") {
+    const opts: RoomOpts = typeof modelOrOpts === "string" ? { model: modelOrOpts } : modelOrOpts;
+    this.run =
+      opts.run ??
+      harness.create({
+        model: opts.model ?? "echo",
+        instruction: opts.instruction ?? ROOM_INSTRUCTION,
+      });
   }
 
   peek() {

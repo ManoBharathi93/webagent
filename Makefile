@@ -1,4 +1,4 @@
-.PHONY: test typecheck ci bench
+.PHONY: test typecheck ci bench pair
 
 test:
 	bun test
@@ -8,5 +8,8 @@ typecheck:
 
 bench:
 	bun bench/run.ts
+
+pair:
+	bun experiment/run.ts --site https://www.corgi.insure
 
 ci: test typecheck
