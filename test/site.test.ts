@@ -93,6 +93,11 @@ describe("site ingest (on top of harness)", () => {
       const ctx = run.getContext();
       expect(ctx.some((m) => m.role === "system")).toBe(true);
       expect(ctx.some((m) => m.role === "pin")).toBe(true);
+
+      const lookup = run.tools.find((t) => t.name === "site_lookup");
+      const found = await lookup!.call({ query: "cheap flights SFO" });
+      const blob = JSON.stringify(found);
+      expect(blob).toMatch(/SFO|\$198|Skyline/i);
     } finally {
       srv.stop();
     }

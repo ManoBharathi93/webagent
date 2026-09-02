@@ -9,8 +9,8 @@ export function scriptModel(opts: { id: string; role: "seller" | "buyer" }): Mod
     supportsTools: true,
     supportsStream: false,
     async reason(req, out) {
-      const last = lastOf(req.messages, "tool");
-      if (last) {
+      const last = req.messages[req.messages.length - 1];
+      if (last?.role === "tool") {
         out.pushText(replyAfterTool(opts.role, last.content));
         return;
       }
@@ -70,16 +70,8 @@ function lastUser(msgs: readonly Message[]): string {
   return "";
 }
 
-function lastOf(msgs: readonly Message[], role: Message["role"]): Message | undefined {
-  for (let i = msgs.length - 1; i >= 0; i--) {
-    if (msgs[i]!.role === role) return msgs[i];
-  }
-  return undefined;
-}
-
 function queryOf(text: string): string {
-  const words = text.toLowerCase().match(/\b(cover|cost|price|quote|broker|seed|saas|cyber|policy|minute|insurance)\w*/g);
-  return words?.join(" ") || text.slice(0, 80);
+  return text.slice(0, 160);
 }
 
 function asRec(v: unknown): Record<string, unknown> {
