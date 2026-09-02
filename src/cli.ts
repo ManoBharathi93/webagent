@@ -10,6 +10,7 @@ if (!args[0] || args[0] === "help") {
   console.error("  webagent models              list available models");
   console.error("  webagent ask <text>          one echo run");
   console.error("  webagent serve [addr]        intake HTTP + MCP (default :8787)");
+  console.error("  webagent ingest <url>        crawl a site, build flows, attach a run");
   process.exit(args[0] ? 0 : 2);
 }
 
@@ -27,11 +28,31 @@ switch (args[0]) {
     console.log(ex.lastText);
     break;
   }
+  case "ingest": {
+    const url = args[1];
+    if (!url) {
+      console.error("usage: webagent ingest <url>");
+      process.exit(2);
+    }
+    const { attachPack, siteBook } = await import("./site/index.ts");
+    const book = siteBook(h);
+    let job = await book.ingest(url);
+    if (job.pack.authAsk) {
+      console.error("auth needed:", job.pack.authAsk.message);
+      console.error(JSON.stringify(job.pack.authAsk, null, 2));
+      console.error("paste a Cookie header and press enter (empty to stop):");
+      const cookies = (await Bun.stdin.text()).trim();
+      if (cookies) job = await book.grant(job.id, { cookies });
+    }
+    const run = job.pack.pages.length ? attachPack(h, job.pack, { model: "echo" }) : undefined;
+    console.log(JSON.stringify({ id: job.id, runId: run?.id, pack: job.pack }, null, 2));
+    break;
+  }
   case "serve": {
     const addr = args[1] || ":8787";
     const port = Number(addr.replace(/^.*:/, "")) || 8787;
     Bun.serve({ port, fetch: intake(h) });
-    console.error(`intake on :${port}  POST /runs  GET /models  GET /health  POST /mcp`);
+    console.error(`intake on :${port}  POST /runs  POST /sites  GET /models  GET /health  POST /mcp`);
     await new Promise(() => {});
     break;
   }

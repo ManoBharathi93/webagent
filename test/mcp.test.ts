@@ -99,6 +99,9 @@ describe("mcp surface", () => {
       "merge",
       "useModel",
       "stepOnce",
+      "ingestSite",
+      "grantSiteAuth",
+      "getSitePack",
     ]) {
       expect(names).toContain(n);
     }

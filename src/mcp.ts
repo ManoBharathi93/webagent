@@ -4,6 +4,9 @@
  */
 import type { Harness } from "./harness.ts";
 import type { Run } from "./run.ts";
+import { attachPack } from "./site/attach.ts";
+import { siteBook } from "./site/book.ts";
+import type { AuthGrant } from "./site/types.ts";
 
 export const MCP_PROTOCOL = "2025-06-18";
 
@@ -266,6 +269,52 @@ const TOOLS: ToolDef[] = [
       const out: { t: string; d?: unknown }[] = [];
       for await (const e of must(h, a).eventStream()) out.push(e);
       return out;
+    },
+  },
+  {
+    name: "ingestSite",
+    description: "crawl a website, build flows, pause if sign-in is needed",
+    inputSchema: {
+      type: "object",
+      properties: { url: { type: "string" }, maxPages: { type: "number" } },
+      required: ["url"],
+    },
+    call: async (h, a) => {
+      const job = await siteBook(h).ingest(str(a, "url"), { maxPages: typeof a.maxPages === "number" ? a.maxPages : undefined });
+      let runId: string | undefined;
+      if (job.pack.pages.length) runId = attachPack(h, job.pack).id;
+      return { id: job.id, runId, pack: job.pack };
+    },
+  },
+  {
+    name: "grantSiteAuth",
+    description: "resume a crawl after the site owner signs in",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        cookies: { type: "string" },
+        user: { type: "string" },
+        password: { type: "string" },
+      },
+      required: ["id"],
+    },
+    call: async (h, a) => {
+      const grant: AuthGrant = { cookies: optStr(a, "cookies"), user: optStr(a, "user"), password: optStr(a, "password") };
+      const job = await siteBook(h).grant(str(a, "id"), grant);
+      let runId: string | undefined;
+      if (job.pack.pages.length) runId = attachPack(h, job.pack).id;
+      return { id: job.id, runId, pack: job.pack };
+    },
+  },
+  {
+    name: "getSitePack",
+    description: "flows, facts, instruction, starter questions for a crawled site",
+    inputSchema: ID,
+    call: (h, a) => {
+      const job = siteBook(h).get(str(a, "id"));
+      if (!job) throw new Error("unknown site " + a.id);
+      return job.pack;
     },
   },
 ];

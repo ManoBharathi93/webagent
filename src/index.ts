@@ -10,3 +10,5 @@ export { STATE_NAME } from "./state.ts";
 export { guardTool } from "./policy.ts";
 export type { Tool } from "./tools.ts";
 export type { HookBag, Verdict } from "./hooks.ts";
+export { attachPack, siteBook, crawlSite, inferFlows, buildPack } from "./site/index.ts";
+export type { SitePack, SiteFlow, AuthAsk, AuthGrant } from "./site/index.ts";

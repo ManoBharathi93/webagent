@@ -1,12 +1,16 @@
 import type { Harness } from "./harness.ts";
 import { mcp } from "./mcp.ts";
+import { siteHttp } from "./site/http.ts";
 
 /** Thin HTTP edge: many requests → many runs. No reasoning here. */
 export function intake(harness: Harness): (req: Request) => Promise<Response> {
   const mcpFetch = mcp(harness);
+  const sites = siteHttp(harness);
   return async (req: Request) => {
     const url = new URL(req.url);
     if (url.pathname === "/mcp") return mcpFetch(req);
+    const site = await sites(req, url);
+    if (site) return site;
     if (req.method === "GET" && url.pathname === "/models") {
       return Response.json(harness.getAvailableModels());
     }

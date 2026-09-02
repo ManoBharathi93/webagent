@@ -120,6 +120,30 @@ run.inject({ text: "hi" });
 await run.start(); // throws /no model/
 ```
 
+## From a website
+
+`src/site/` sits **on** the harness. The loop does not change. Paste a URL; we crawl same-origin pages (sitemap + links), pause if sign-in is required, then attach flows as tools on a normal run.
+
+```sh
+bun src/cli.ts ingest https://example.com
+```
+
+```ts
+import { Harness, attachPack, siteBook } from "webagent";
+
+const h = new Harness();
+const job = await siteBook(h).ingest("https://example.com");
+if (job.pack.authAsk) {
+  await siteBook(h).grant(job.id, { cookies: "session=…" }); // or user / password
+}
+const run = attachPack(h, job.pack, { model: "echo" });
+// run.instruction + site_lookup + flow_* tools — same start / inject / fork
+```
+
+The pack has `flows`, `facts`, `instruction`, and `starterQuestions` for the public agent.
+
+`POST /sites` `{ url }` and `POST /sites/:id/auth` are the HTTP shape. MCP: `ingestSite`, `grantSiteAuth`, `getSitePack`.
+
 ## CLI
 
 | Command | Purpose |
@@ -127,6 +151,7 @@ await run.start(); // throws /no model/
 | `bun src/cli.ts models` | List registered models and ready state |
 | `bun src/cli.ts ask <text>` | One `echo` run |
 | `bun src/cli.ts serve [addr]` | Intake HTTP + MCP (default `:8787`) |
+| `bun src/cli.ts ingest <url>` | Crawl a site, build flows, attach a run |
 | `bun src/cli.ts help` | Usage |
 
 `serve` is `Bun.serve` over [`intake`](src/intake.ts). No reasoning happens at the edge.
@@ -283,6 +308,10 @@ Verdict: `"allow"` | `"deny"` | `{ redirect: { model?: string; tool?: string } }
 | `GET` | `/health` | Inflight, run count, counts by state |
 | `POST` | `/runs` | `{ "text"?: string, "model"?: string }` — create, inject, start (`model` defaults to `echo` here) |
 | `GET` | `/runs/:id` | `explain()` |
+| `POST` | `/sites` | `{ url }` — crawl, flows, attach a run |
+| `GET` | `/sites` | Ingest jobs |
+| `GET` | `/sites/:id` | Pack |
+| `POST` | `/sites/:id/auth` | Resume after sign-in |
 | `POST` | `/mcp` | Streamable HTTP MCP |
 | `DELETE` | `/mcp` | End MCP session (`Mcp-Session-Id`) |
 
@@ -354,8 +383,9 @@ Perf tests in [`test/perf.test.ts`](test/perf.test.ts) assert those invariants.
 
 ```
 src/                 harness (flat)
+  site/              crawl → flows → pack → attach (on top of the loop)
   index.ts           public exports
-  cli.ts             models | ask | serve
+  cli.ts             models | ask | serve | ingest
   harness.ts         shelf, runs, startAll
   run.ts             state machine + controls
   loop.ts            one step
