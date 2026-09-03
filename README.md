@@ -383,6 +383,8 @@ Writes `experiment/last-report.json` and `.md` (gitignored): crawl hops, both ag
 
 Choosing `cursor` is a `useModel` control. The loop does not change.
 
+Readme of that thread: [CONVERSATION.md](CONVERSATION.md). Live numbers: [experiment/corgi-analysis.md](experiment/corgi-analysis.md).
+
 ## Configuration
 
 | Variable | Used by | Default |

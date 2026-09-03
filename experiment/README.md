@@ -2,6 +2,8 @@
 
 Two public agents. One crawled site. One network report.
 
+Story of the thread that built this: [CONVERSATION.md](../CONVERSATION.md). Live Corgi numbers: [corgi-analysis.md](corgi-analysis.md).
+
 ```sh
 bun experiment/run.ts --site https://www.corgi.insure
 ```
