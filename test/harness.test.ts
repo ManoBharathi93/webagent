@@ -410,6 +410,58 @@ describe("controls", () => {
     expect(tools[0]?.toolCallId).toBe("c1");
     expect(tools[0]?.content).toContain("1");
     expect(tools[0]?.content).not.toContain("tool_error");
+    expect(tools.map((m) => m.toolCallId).sort()).toEqual(["c1", "c2"]);
+  });
+
+  test("stop during beforeTool stubs the remaining calls", async () => {
+    let release!: () => void;
+    let entered!: () => void;
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    const inHook = new Promise<void>((r) => {
+      entered = r;
+    });
+    const model: Model = {
+      id: "pair",
+      ready: true,
+      supportsTools: true,
+      async reason(_req, out) {
+        out.pushToolDelta(0, "c1", "one", "{}");
+        out.pushToolDelta(1, "c2", "two", "{}");
+      },
+    };
+    const h = new Harness();
+    h.addModel(model);
+    const run = h.create({
+      model: "pair",
+      tools: [
+        { name: "one", async call() { return { n: 1 }; } },
+        { name: "two", async call() { return { n: 2 }; } },
+      ],
+      hooks: {
+        beforeTool: async (_id, name) => {
+          if (name === "two") {
+            entered();
+            await gate;
+          }
+          return "allow";
+        },
+      },
+    });
+    run.inject({ text: "go" });
+    const pending = run.start();
+    await inHook;
+    run.stop();
+    release();
+    await pending;
+    const tools = run.getContext().filter((m) => m.role === "tool");
+    expect(tools).toHaveLength(2);
+    expect(tools[0]?.toolCallId).toBe("c1");
+    expect(tools[0]?.content).toContain("1");
+    expect(tools[1]?.toolCallId).toBe("c2");
+    expect(tools[1]?.content).toContain("stopped");
+    expect(tools[1]?.content).not.toContain("\"n\":2");
   });
 
   test("reused tool ids still get a result on a later throw", async () => {

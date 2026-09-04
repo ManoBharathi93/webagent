@@ -58,13 +58,17 @@ export async function oneStep(host: LoopHost, models: ModelShelf): Promise<{ tex
   host.setPhase(PHASE_TOOL);
   host.context.append({ role: "assistant", content: out.text, toolCalls: out.toolCalls });
   const wrote = new Set<string>();
+  const stopStep = () => {
+    fillMissing(host, out.toolCalls, wrote, "stopped");
+    return { text: out.text, stopped: true as const };
+  };
   try {
     for (let i = 0; i < out.toolCalls.length; i++) {
       const tc = out.toolCalls[i]!;
-      if (isClosed(host)) return { text: out.text, stopped: true };
+      if (isClosed(host)) return stopStep();
       let name = tc.name;
       const tv = await decide(host.hooks.beforeTool, host.id, name, tc.arguments);
-      if (isClosed(host)) return { text: out.text, stopped: true };
+      if (isClosed(host)) return stopStep();
       if (tv === "deny") {
         addTool(host, wrote, tc.id, { error: "blocked_by_hook", reason: "denied" });
         continue;
@@ -83,14 +87,12 @@ export async function oneStep(host: LoopHost, models: ModelShelf): Promise<{ tex
         : { error: "unknown_tool", reason: name };
       addTool(host, wrote, tc.id, result as Record<string, unknown>);
       host.hooks.afterTool?.(host.id, name, result);
-      if (isClosed(host)) return { text: out.text, stopped: true };
+      if (isClosed(host)) return stopStep();
     }
     return { text: out.text };
   } catch (e) {
-    if (!isClosed(host)) {
-      const reason = e instanceof Error ? e.message : String(e);
-      fillMissing(host, out.toolCalls, wrote, reason);
-    }
+    const reason = isClosed(host) ? "stopped" : e instanceof Error ? e.message : String(e);
+    fillMissing(host, out.toolCalls, wrote, reason);
     throw e;
   } finally {
     host.setPhase(PHASE_IDLE);
