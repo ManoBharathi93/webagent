@@ -186,13 +186,25 @@ Same salesperson run. `POST /chat` with a founder story should get a question or
 
 ---
 
+## GEPA on the system prompt (done on this branch)
+
+We scored seed instructions on seven goals (discover, risks, penalty, social, report, grounded, short), kept the Pareto front, and filled missing goals. Winner is bound by `attachSales` (`src/sales/`). Table: `experiment/gepa/result.md`. Replay: `bun experiment/gepa/run.ts`.
+
+Live path after category + what they do:
+
+1. `map_risks` (code, not the model) → risks, uninsured penalties, one customer or on-site story, package
+2. One **pinpoint report** (≤180 words): For you / Risks / If you skip insurance / Who / Best fit / Do this next
+3. SaaS → Intryc + seed stack. AI → Imagine AI + E&O/cyber. No invented lawsuit or premium.
+
+Librarian crawl prompt stays the default for generic `attachPack`.
+
 ## Phases
 
-**Phase A — voice and discovery (smallest change, biggest feel)**  
-Corgi sales instruction. Chat chips. Cursor bound. No new tools yet. Success: first two turns are questions, not a sitemap.
+**Phase A — voice and discovery**  
+GEPA sales instruction is in. Chat chips and Cursor bind still to do. Success: first turns ask category + what they do, or skip ahead to the report.
 
 **Phase B — offer and proof**  
-`note_visitor` + `fit_offer` + filtered `cite_proof`. Recap card on the page. Success: seed SaaS + “enterprise contract” → seed stack + one cost band + one customer + Get insured / demo link.
+`map_risks` + pinpoint report are in. Still to add: `note_visitor` pin, recap card on the page. Success: seed SaaS → seed stack + cost band + Intryc + CTA.
 
 **Phase C — conversion**  
 CTA buttons, demo/quote deep links, “forward to investor” blurb. Optional lead capture. Success: we can count “CTA clicked” or “demo URL given” per run.
