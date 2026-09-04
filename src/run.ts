@@ -123,6 +123,7 @@ export class Run {
     try {
       while (this.state === RUNNING && !this.pauseAfterStep) {
         const r = await oneStep(this, this.models);
+        if (this.state === STOPPED || this.state === CANCELLED) break;
         this.step++;
         this.lastText = r.text;
         if (r.stopped) break;
@@ -146,8 +147,10 @@ export class Run {
     this.state = RUNNING;
     try {
       const r = await oneStep(this, this.models);
-      this.step++;
-      this.lastText = r.text;
+      if (this.state !== STOPPED && this.state !== CANCELLED) {
+        this.step++;
+        this.lastText = r.text;
+      }
     } catch (e) {
       this.hooks.onError?.(this.id, e);
       throw e;

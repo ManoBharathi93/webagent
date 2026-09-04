@@ -176,10 +176,13 @@ describe("controls", () => {
     const run = h.create({ model: "slow" });
     run.inject({ text: "x" });
     const pending = run.start();
+    const before = run.explain();
     run.stop();
     release();
     const ex = await pending;
     expect(ex.state).toBe("stopped");
+    expect(ex.step).toBe(before.step);
+    expect(ex.lastText).toBe(before.lastText);
     expect(run.getContext().some((m) => m.content === "late")).toBe(false);
   });
 
