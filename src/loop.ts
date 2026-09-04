@@ -19,8 +19,10 @@ export interface LoopHost {
 }
 
 export async function oneStep(host: LoopHost, models: ModelShelf): Promise<{ text: string; stopped?: boolean }> {
+  if (isClosed(host)) return { text: "", stopped: true };
   let modelId = host.modelId;
   const verdict = await decide(host.hooks.beforeReason, host.id, modelId);
+  if (isClosed(host)) return { text: "", stopped: true };
   if (verdict === "deny") return { text: "", stopped: true };
   if (typeof verdict === "object" && verdict.redirect.model) modelId = verdict.redirect.model;
 
@@ -28,6 +30,7 @@ export async function oneStep(host: LoopHost, models: ModelShelf): Promise<{ tex
   const model: Model | undefined = models.get(modelId);
   if (!model) throw new Error("unknown model " + modelId);
   if (model.ready === false) throw new Error("model not ready: " + (model.reasonNotReady ?? modelId));
+  if (isClosed(host)) return { text: "", stopped: true };
 
   host.setPhase(PHASE_REASON);
   const assembler = new Assembler();
@@ -54,28 +57,29 @@ export async function oneStep(host: LoopHost, models: ModelShelf): Promise<{ tex
 
   host.setPhase(PHASE_TOOL);
   host.context.append({ role: "assistant", content: out.text, toolCalls: out.toolCalls });
+  const wrote = new Set<string>();
   try {
     for (let i = 0; i < out.toolCalls.length; i++) {
       const tc = out.toolCalls[i]!;
       if (isClosed(host)) {
-        fillMissing(host, out.toolCalls, "stopped");
+        fillMissing(host, out.toolCalls, wrote, "stopped");
         return { text: out.text, stopped: true };
       }
       let name = tc.name;
       const tv = await decide(host.hooks.beforeTool, host.id, name, tc.arguments);
       if (isClosed(host)) {
-        fillMissing(host, out.toolCalls, "stopped");
+        fillMissing(host, out.toolCalls, wrote, "stopped");
         return { text: out.text, stopped: true };
       }
       if (tv === "deny") {
-        host.context.append({ role: "tool", content: JSON.stringify({ error: "blocked_by_hook", reason: "denied" }), toolCallId: tc.id });
+        addTool(host, wrote, tc.id, { error: "blocked_by_hook", reason: "denied" });
         continue;
       }
       if (typeof tv === "object" && tv.redirect.tool) name = tv.redirect.tool;
 
       const policy = blockedAction(name);
       if (policy) {
-        host.context.append({ role: "tool", content: JSON.stringify({ error: "blocked_by_policy", reason: policy }), toolCallId: tc.id });
+        addTool(host, wrote, tc.id, { error: "blocked_by_policy", reason: policy });
         continue;
       }
 
@@ -84,16 +88,16 @@ export async function oneStep(host: LoopHost, models: ModelShelf): Promise<{ tex
         ? await tool.call(tc.arguments, host.ac.signal)
         : { error: "unknown_tool", reason: name };
       host.hooks.afterTool?.(host.id, name, result);
-      host.context.append({ role: "tool", content: JSON.stringify(result), toolCallId: tc.id });
+      addTool(host, wrote, tc.id, result as Record<string, unknown>);
       if (isClosed(host)) {
-        fillMissing(host, out.toolCalls, "stopped");
+        fillMissing(host, out.toolCalls, wrote, "stopped");
         return { text: out.text, stopped: true };
       }
     }
     return { text: out.text };
   } catch (e) {
     const reason = e instanceof Error ? e.message : String(e);
-    fillMissing(host, out.toolCalls, reason);
+    fillMissing(host, out.toolCalls, wrote, reason);
     throw e;
   } finally {
     host.setPhase(PHASE_IDLE);
@@ -104,19 +108,17 @@ function isClosed(host: LoopHost): boolean {
   return host.state === STOPPED || host.state === CANCELLED;
 }
 
-function fillMissing(host: LoopHost, calls: { id: string }[], reason: string): void {
-  const have = new Set<string>();
-  const view = host.context.view();
-  for (let i = 0; i < view.length; i++) {
-    const id = view[i]!.toolCallId;
-    if (view[i]!.role === "tool" && id) have.add(id);
-  }
-  const body = JSON.stringify({ error: reason === "stopped" ? "stopped" : "tool_error", reason });
+function addTool(host: LoopHost, wrote: Set<string>, id: string, result: Record<string, unknown>): void {
+  host.context.append({ role: "tool", content: JSON.stringify(result), toolCallId: id });
+  wrote.add(id);
+}
+
+function fillMissing(host: LoopHost, calls: { id: string }[], wrote: Set<string>, reason: string): void {
+  const body = { error: reason === "stopped" ? "stopped" : "tool_error", reason };
   for (let i = 0; i < calls.length; i++) {
     const id = calls[i]!.id;
-    if (have.has(id)) continue;
-    host.context.append({ role: "tool", content: body, toolCallId: id });
-    have.add(id);
+    if (wrote.has(id)) continue;
+    addTool(host, wrote, id, body);
   }
 }
 

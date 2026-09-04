@@ -316,6 +316,38 @@ describe("controls", () => {
     expect(b.getContext().filter((m) => m.content === "from-a")).toHaveLength(1);
   });
 
+  test("stop during beforeReason does not call the model", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    let reasoned = false;
+    const h = new Harness();
+    h.addModel({
+      id: "slow",
+      ready: true,
+      async reason(_r, out) {
+        reasoned = true;
+        out.pushText("late");
+      },
+    });
+    const run = h.create({
+      model: "slow",
+      hooks: {
+        beforeReason: async () => {
+          await gate;
+        },
+      },
+    });
+    run.inject({ text: "x" });
+    const pending = run.start();
+    run.stop();
+    release();
+    const ex = await pending;
+    expect(ex.state).toBe("stopped");
+    expect(reasoned).toBe(false);
+  });
+
   test("a thrown tool hook still fills every tool result", async () => {
     const model: Model = {
       id: "pair",
@@ -346,6 +378,42 @@ describe("controls", () => {
     const tools = run.getContext().filter((m) => m.role === "tool");
     expect(tools.map((m) => m.toolCallId).sort()).toEqual(["c1", "c2"]);
     expect(tools.some((m) => m.content.includes("boom"))).toBe(true);
+  });
+
+  test("reused tool ids still get a result on a later throw", async () => {
+    let turn = 0;
+    const model: Model = {
+      id: "again",
+      ready: true,
+      supportsTools: true,
+      async reason(req, out) {
+        if (req.messages[req.messages.length - 1]?.role === "tool") {
+          out.pushText("ok");
+          return;
+        }
+        turn++;
+        out.pushToolDelta(0, "c1", "lookup", "{}");
+      },
+    };
+    const h = new Harness();
+    h.addModel(model);
+    const run = h.create({
+      model: "again",
+      tools: [{ name: "lookup", async call() { return { n: turn }; } }],
+      hooks: {
+        beforeTool: () => {
+          if (turn > 1) throw new Error("again");
+          return "allow";
+        },
+      },
+    });
+    run.inject({ text: "one" });
+    await run.start();
+    run.inject({ text: "two" });
+    await expect(run.start()).rejects.toThrow(/again/);
+    const tools = run.getContext().filter((m) => m.role === "tool" && m.toolCallId === "c1");
+    expect(tools.length).toBeGreaterThanOrEqual(2);
+    expect(tools[tools.length - 1]?.content).toContain("again");
   });
 
   test("inject mid-run adds user text", async () => {
