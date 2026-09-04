@@ -123,7 +123,7 @@ export class Run {
     try {
       while (this.state === RUNNING && !this.pauseAfterStep) {
         const r = await oneStep(this, this.models);
-        if (this.state === STOPPED || this.state === CANCELLED) break;
+        if (this.finished()) break;
         this.step++;
         this.lastText = r.text;
         if (r.stopped) break;
@@ -147,7 +147,7 @@ export class Run {
     this.state = RUNNING;
     try {
       const r = await oneStep(this, this.models);
-      if (this.state !== STOPPED && this.state !== CANCELLED) {
+      if (!this.finished()) {
         this.step++;
         this.lastText = r.text;
       }
@@ -251,9 +251,14 @@ export class Run {
     for (let i = 0; i < w.length; i++) w[i]!(snap);
   }
 
+  private finished(): boolean {
+    const s = this.state;
+    return s === STOPPED || s === CANCELLED;
+  }
+
   /** Keep a finished state. Pause only if the run is still open. */
   private hold(): Explain {
-    if (this.state === STOPPED || this.state === CANCELLED) return this.explain();
+    if (this.finished()) return this.explain();
     if (this.ac.signal.aborted) {
       this.state = CANCELLED;
       this.finish();
