@@ -380,6 +380,38 @@ describe("controls", () => {
     expect(tools.some((m) => m.content.includes("boom"))).toBe(true);
   });
 
+  test("afterTool throw keeps the successful tool result", async () => {
+    const model: Model = {
+      id: "pair",
+      ready: true,
+      supportsTools: true,
+      async reason(_req, out) {
+        out.pushToolDelta(0, "c1", "one", "{}");
+        out.pushToolDelta(1, "c2", "two", "{}");
+      },
+    };
+    const h = new Harness();
+    h.addModel(model);
+    const run = h.create({
+      model: "pair",
+      tools: [
+        { name: "one", async call() { return { n: 1 }; } },
+        { name: "two", async call() { return { n: 2 }; } },
+      ],
+      hooks: {
+        afterTool: (_id, name) => {
+          if (name === "one") throw new Error("hook");
+        },
+      },
+    });
+    run.inject({ text: "go" });
+    await expect(run.start()).rejects.toThrow(/hook/);
+    const tools = run.getContext().filter((m) => m.role === "tool");
+    expect(tools[0]?.toolCallId).toBe("c1");
+    expect(tools[0]?.content).toContain("1");
+    expect(tools[0]?.content).not.toContain("tool_error");
+  });
+
   test("reused tool ids still get a result on a later throw", async () => {
     let turn = 0;
     const model: Model = {
