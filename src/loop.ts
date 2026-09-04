@@ -45,34 +45,37 @@ export async function oneStep(host: LoopHost, models: ModelShelf): Promise<{ tex
     host.setPhase(PHASE_IDLE);
     return { text: out.text, stopped: true };
   }
-  if (out.text || out.toolCalls.length > 0) {
-    const frame: Message = { role: "assistant", content: out.text };
-    if (out.toolCalls.length > 0) frame.toolCalls = out.toolCalls;
-    host.context.append(frame);
-  }
 
   if (out.toolCalls.length === 0) {
+    if (out.text) host.context.append({ role: "assistant", content: out.text });
     host.setPhase(PHASE_IDLE);
     return { text: out.text };
   }
 
   host.setPhase(PHASE_TOOL);
+  const frames: Message[] = [];
+  const assistant: Message = { role: "assistant", content: out.text, toolCalls: out.toolCalls };
   for (let i = 0; i < out.toolCalls.length; i++) {
-    if (isClosed(host)) break;
+    if (isClosed(host)) {
+      host.setPhase(PHASE_IDLE);
+      return { text: out.text, stopped: true };
+    }
     const tc = out.toolCalls[i]!;
     let name = tc.name;
     const tv = await decide(host.hooks.beforeTool, host.id, name, tc.arguments);
+    if (isClosed(host)) {
+      host.setPhase(PHASE_IDLE);
+      return { text: out.text, stopped: true };
+    }
     if (tv === "deny") {
-      const blocked = { error: "blocked_by_hook", reason: "denied" };
-      host.context.append({ role: "tool", content: JSON.stringify(blocked), toolCallId: tc.id });
+      frames.push({ role: "tool", content: JSON.stringify({ error: "blocked_by_hook", reason: "denied" }), toolCallId: tc.id });
       continue;
     }
     if (typeof tv === "object" && tv.redirect.tool) name = tv.redirect.tool;
 
     const policy = blockedAction(name);
     if (policy) {
-      const blocked = { error: "blocked_by_policy", reason: policy };
-      host.context.append({ role: "tool", content: JSON.stringify(blocked), toolCallId: tc.id });
+      frames.push({ role: "tool", content: JSON.stringify({ error: "blocked_by_policy", reason: policy }), toolCallId: tc.id });
       continue;
     }
 
@@ -80,10 +83,19 @@ export async function oneStep(host: LoopHost, models: ModelShelf): Promise<{ tex
     const result = tool
       ? await tool.call(tc.arguments, host.ac.signal)
       : { error: "unknown_tool", reason: name };
-    if (isClosed(host)) break;
+    if (isClosed(host)) {
+      host.setPhase(PHASE_IDLE);
+      return { text: out.text, stopped: true };
+    }
     host.hooks.afterTool?.(host.id, name, result);
-    host.context.append({ role: "tool", content: JSON.stringify(result), toolCallId: tc.id });
+    frames.push({ role: "tool", content: JSON.stringify(result), toolCallId: tc.id });
   }
+  if (isClosed(host)) {
+    host.setPhase(PHASE_IDLE);
+    return { text: out.text, stopped: true };
+  }
+  host.context.append(assistant);
+  host.context.appendMany(frames);
   host.setPhase(PHASE_IDLE);
   return { text: out.text };
 }

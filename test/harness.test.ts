@@ -186,6 +186,45 @@ describe("controls", () => {
     expect(run.getContext().some((m) => m.content === "late")).toBe(false);
   });
 
+  test("stop during a tool step leaves no unmatched tool calls", async () => {
+    let release!: () => void;
+    let entered!: () => void;
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    const inTool = new Promise<void>((r) => {
+      entered = r;
+    });
+    const tool: Tool = {
+      name: "lookup",
+      async call() {
+        entered();
+        await gate;
+        return { city: "X" };
+      },
+    };
+    const model: Model = {
+      id: "toolish",
+      ready: true,
+      supportsTools: true,
+      async reason(_req, out) {
+        out.pushToolDelta(0, "c1", "lookup", '{"city":"X"}');
+      },
+    };
+    const h = new Harness();
+    h.addModel(model);
+    const run = h.create({ model: "toolish", tools: [tool] });
+    run.inject({ text: "go" });
+    const pending = run.start();
+    await inTool;
+    run.stop();
+    release();
+    await pending;
+    const ctx = run.getContext();
+    expect(ctx.some((m) => m.role === "assistant" && (m.toolCalls?.length ?? 0) > 0)).toBe(false);
+    expect(ctx.some((m) => m.role === "tool")).toBe(false);
+  });
+
   test("repeated forks keep distinct ids", () => {
     const h = new Harness();
     const parent = h.create();
