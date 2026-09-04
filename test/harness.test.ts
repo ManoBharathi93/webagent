@@ -221,8 +221,61 @@ describe("controls", () => {
     release();
     await pending;
     const ctx = run.getContext();
-    expect(ctx.some((m) => m.role === "assistant" && (m.toolCalls?.length ?? 0) > 0)).toBe(false);
-    expect(ctx.some((m) => m.role === "tool")).toBe(false);
+    const assistant = ctx.find((m) => m.role === "assistant" && (m.toolCalls?.length ?? 0) > 0);
+    expect(assistant?.toolCalls?.map((c) => c.id)).toEqual(["c1"]);
+    const tools = ctx.filter((m) => m.role === "tool");
+    expect(tools).toHaveLength(1);
+    expect(tools[0]?.toolCallId).toBe("c1");
+    expect(tools[0]?.content).toContain("city");
+  });
+
+  test("stop on a later tool keeps earlier results", async () => {
+    let release!: () => void;
+    let entered!: () => void;
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    const inSecond = new Promise<void>((r) => {
+      entered = r;
+    });
+    const first: Tool = {
+      name: "one",
+      async call() {
+        return { n: 1 };
+      },
+    };
+    const second: Tool = {
+      name: "two",
+      async call() {
+        entered();
+        await gate;
+        return { n: 2 };
+      },
+    };
+    const model: Model = {
+      id: "pair",
+      ready: true,
+      supportsTools: true,
+      async reason(_req, out) {
+        out.pushToolDelta(0, "c1", "one", "{}");
+        out.pushToolDelta(1, "c2", "two", "{}");
+      },
+    };
+    const h = new Harness();
+    h.addModel(model);
+    const run = h.create({ model: "pair", tools: [first, second] });
+    run.inject({ text: "go" });
+    const pending = run.start();
+    await inSecond;
+    run.stop();
+    release();
+    await pending;
+    const tools = run.getContext().filter((m) => m.role === "tool");
+    expect(tools).toHaveLength(2);
+    expect(tools[0]?.toolCallId).toBe("c1");
+    expect(tools[0]?.content).toContain("1");
+    expect(tools[1]?.toolCallId).toBe("c2");
+    expect(tools[1]?.content).toContain("2");
   });
 
   test("repeated forks keep distinct ids", () => {
