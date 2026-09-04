@@ -1,6 +1,6 @@
 import { Context, type Message } from "./context.ts";
 import type { HookBag } from "./hooks.ts";
-import { oneStep } from "./loop.ts";
+import { commitPending, oneStep, type PendingBatch } from "./loop.ts";
 import type { ModelShelf } from "./models.ts";
 import { guardTool } from "./policy.ts";
 import {
@@ -47,6 +47,7 @@ export class Run {
   hooks: HookBag;
   readonly ac = new AbortController();
   lastText = "";
+  pending: PendingBatch | null = null;
   private readonly events: { t: string; d?: unknown }[] = [];
   private waiters: ((v: Explain) => void)[] = [];
   private pauseAfterStep = false;
@@ -178,6 +179,7 @@ export class Run {
   }
 
   stop(): Explain {
+    commitPending(this, "stopped");
     this.state = STOPPED;
     this.hooks.onStop?.(this.id);
     this.emit("stop");
@@ -187,6 +189,7 @@ export class Run {
 
   cancel(): Explain {
     this.ac.abort();
+    commitPending(this, "stopped");
     this.state = CANCELLED;
     this.hooks.onStop?.(this.id);
     this.emit("cancel");

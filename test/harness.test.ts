@@ -226,7 +226,7 @@ describe("controls", () => {
     const tools = ctx.filter((m) => m.role === "tool");
     expect(tools).toHaveLength(1);
     expect(tools[0]?.toolCallId).toBe("c1");
-    expect(tools[0]?.content).toContain("city");
+    expect(tools[0]?.content).toContain("stopped");
   });
 
   test("stop on a later tool keeps earlier results", async () => {
@@ -275,7 +275,8 @@ describe("controls", () => {
     expect(tools[0]?.toolCallId).toBe("c1");
     expect(tools[0]?.content).toContain("1");
     expect(tools[1]?.toolCallId).toBe("c2");
-    expect(tools[1]?.content).toContain("2");
+    expect(tools[1]?.content).toContain("stopped");
+    expect(tools[1]?.content).not.toContain("\"n\":2");
   });
 
   test("repeated forks keep distinct ids", () => {
@@ -462,6 +463,81 @@ describe("controls", () => {
     expect(tools[1]?.toolCallId).toBe("c2");
     expect(tools[1]?.content).toContain("stopped");
     expect(tools[1]?.content).not.toContain("\"n\":2");
+  });
+
+  test("stop does not append after it returns", async () => {
+    let release!: () => void;
+    let entered!: () => void;
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    const inTool = new Promise<void>((r) => {
+      entered = r;
+    });
+    const h = new Harness();
+    h.addModel({
+      id: "slow",
+      ready: true,
+      supportsTools: true,
+      async reason(_req, out) {
+        out.pushToolDelta(0, "c1", "lookup", "{}");
+      },
+    });
+    const run = h.create({
+      model: "slow",
+      tools: [{
+        name: "lookup",
+        async call() {
+          entered();
+          await gate;
+          return { late: true };
+        },
+      }],
+    });
+    run.inject({ text: "go" });
+    const pending = run.start();
+    await inTool;
+    run.stop();
+    const frozen = run.getContext().map((m) => m.content);
+    release();
+    await pending;
+    expect(run.getContext().map((m) => m.content)).toEqual(frozen);
+    expect(frozen.some((c) => c.includes("late"))).toBe(false);
+  });
+
+  test("duplicate tool ids in one step each get a result", async () => {
+    const model: Model = {
+      id: "dup",
+      ready: true,
+      supportsTools: true,
+      async reason(_req, out) {
+        out.pushToolDelta(0, "c1", "one", "{}");
+        out.pushToolDelta(1, "c1", "two", "{}");
+      },
+    };
+    const h = new Harness();
+    h.addModel(model);
+    const run = h.create({
+      model: "dup",
+      tools: [
+        { name: "one", async call() { return { n: 1 }; } },
+        { name: "two", async call() { return { n: 2 }; } },
+      ],
+      hooks: {
+        beforeTool: (_id, name) => {
+          if (name === "two") throw new Error("dup");
+          return "allow";
+        },
+      },
+    });
+    run.inject({ text: "go" });
+    await expect(run.start()).rejects.toThrow(/dup/);
+    const tools = run.getContext().filter((m) => m.role === "tool");
+    expect(tools).toHaveLength(2);
+    expect(tools[0]?.toolCallId).toBe("c1");
+    expect(tools[0]?.content).toContain("1");
+    expect(tools[1]?.toolCallId).toBe("c1");
+    expect(tools[1]?.content).toContain("dup");
   });
 
   test("reused tool ids still get a result on a later throw", async () => {

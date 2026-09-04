@@ -1,10 +1,16 @@
-import { Assembler } from "./assembler.ts";
-import type { Context, Message } from "./context.ts";
+import { Assembler, type ToolCall } from "./assembler.ts";
+import type { Context } from "./context.ts";
 import { decide, type HookBag } from "./hooks.ts";
 import type { Model, ModelShelf } from "./models.ts";
 import { blockedAction } from "./policy.ts";
 import type { Tool } from "./tools.ts";
 import { CANCELLED, PHASE_IDLE, PHASE_REASON, PHASE_TOOL, STOPPED } from "./state.ts";
+
+export interface PendingBatch {
+  text: string;
+  calls: ToolCall[];
+  results: (Record<string, unknown> | null)[];
+}
 
 export interface LoopHost {
   id: string;
@@ -15,7 +21,23 @@ export interface LoopHost {
   state: number;
   hooks: HookBag;
   ac: AbortController;
+  pending: PendingBatch | null;
   setPhase(p: number): void;
+}
+
+/** Write the assistant tool_calls frame and one result per call. Safe to call twice. */
+export function commitPending(host: LoopHost, fallback: string | null): void {
+  const p = host.pending;
+  if (!p) return;
+  host.pending = null;
+  host.context.append({ role: "assistant", content: p.text, toolCalls: p.calls });
+  const stub = fallback
+    ? { error: fallback === "stopped" ? "stopped" : "tool_error", reason: fallback }
+    : { error: "tool_error", reason: "missing" };
+  for (let i = 0; i < p.calls.length; i++) {
+    const result = p.results[i] ?? stub;
+    host.context.append({ role: "tool", content: JSON.stringify(result), toolCallId: p.calls[i]!.id });
+  }
 }
 
 export async function oneStep(host: LoopHost, models: ModelShelf): Promise<{ text: string; stopped?: boolean }> {
@@ -56,28 +78,27 @@ export async function oneStep(host: LoopHost, models: ModelShelf): Promise<{ tex
   }
 
   host.setPhase(PHASE_TOOL);
-  host.context.append({ role: "assistant", content: out.text, toolCalls: out.toolCalls });
-  const wrote = new Set<string>();
-  const stopStep = () => {
-    fillMissing(host, out.toolCalls, wrote, "stopped");
-    return { text: out.text, stopped: true as const };
+  host.pending = {
+    text: out.text,
+    calls: out.toolCalls,
+    results: out.toolCalls.map(() => null),
   };
   try {
     for (let i = 0; i < out.toolCalls.length; i++) {
       const tc = out.toolCalls[i]!;
-      if (isClosed(host)) return stopStep();
+      if (isClosed(host) || !host.pending) return { text: out.text, stopped: true };
       let name = tc.name;
       const tv = await decide(host.hooks.beforeTool, host.id, name, tc.arguments);
-      if (isClosed(host)) return stopStep();
+      if (isClosed(host) || !host.pending) return { text: out.text, stopped: true };
       if (tv === "deny") {
-        addTool(host, wrote, tc.id, { error: "blocked_by_hook", reason: "denied" });
+        host.pending.results[i] = { error: "blocked_by_hook", reason: "denied" };
         continue;
       }
       if (typeof tv === "object" && tv.redirect.tool) name = tv.redirect.tool;
 
       const policy = blockedAction(name);
       if (policy) {
-        addTool(host, wrote, tc.id, { error: "blocked_by_policy", reason: policy });
+        host.pending.results[i] = { error: "blocked_by_policy", reason: policy };
         continue;
       }
 
@@ -85,14 +106,18 @@ export async function oneStep(host: LoopHost, models: ModelShelf): Promise<{ tex
       const result = tool
         ? await tool.call(tc.arguments, host.ac.signal)
         : { error: "unknown_tool", reason: name };
-      addTool(host, wrote, tc.id, result as Record<string, unknown>);
+      if (isClosed(host) || !host.pending) return { text: out.text, stopped: true };
+      host.pending.results[i] = result as Record<string, unknown>;
       host.hooks.afterTool?.(host.id, name, result);
-      if (isClosed(host)) return stopStep();
     }
+    if (isClosed(host) || !host.pending) return { text: out.text, stopped: true };
+    commitPending(host, null);
     return { text: out.text };
   } catch (e) {
-    const reason = isClosed(host) ? "stopped" : e instanceof Error ? e.message : String(e);
-    fillMissing(host, out.toolCalls, wrote, reason);
+    if (host.pending) {
+      const reason = isClosed(host) ? "stopped" : e instanceof Error ? e.message : String(e);
+      commitPending(host, reason);
+    }
     throw e;
   } finally {
     host.setPhase(PHASE_IDLE);
@@ -101,20 +126,6 @@ export async function oneStep(host: LoopHost, models: ModelShelf): Promise<{ tex
 
 function isClosed(host: LoopHost): boolean {
   return host.state === STOPPED || host.state === CANCELLED;
-}
-
-function addTool(host: LoopHost, wrote: Set<string>, id: string, result: Record<string, unknown>): void {
-  host.context.append({ role: "tool", content: JSON.stringify(result), toolCallId: id });
-  wrote.add(id);
-}
-
-function fillMissing(host: LoopHost, calls: { id: string }[], wrote: Set<string>, reason: string): void {
-  const body = { error: reason === "stopped" ? "stopped" : "tool_error", reason };
-  for (let i = 0; i < calls.length; i++) {
-    const id = calls[i]!.id;
-    if (wrote.has(id)) continue;
-    addTool(host, wrote, id, body);
-  }
 }
 
 function findTool(tools: Tool[], name: string): Tool | undefined {
