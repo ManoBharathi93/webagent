@@ -431,6 +431,17 @@ describe("controls", () => {
     const run = h.create({ model: "echo" });
     run.stop();
     expect(run.explain().state).toBe("stopped");
+    expect(run.skipStep().step).toBe(0);
+  });
+
+  test("absorb picks up a suffix written after an empty merge", () => {
+    const parent = new Context();
+    parent.append({ role: "user", content: "shared" });
+    const child = parent.fork();
+    parent.absorb(child);
+    child.append({ role: "user", content: "later" });
+    parent.absorb(child);
+    expect(parent.view().map((m) => m.content)).toEqual(["shared", "later"]);
   });
 
   test("cancel aborts", () => {

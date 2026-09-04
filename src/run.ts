@@ -163,6 +163,7 @@ export class Run {
   }
 
   skipStep(): Explain {
+    if (this.finished()) return this.explain();
     this.step++;
     this.emit("skip");
     return this.explain();

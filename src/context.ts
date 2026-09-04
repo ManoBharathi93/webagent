@@ -12,7 +12,6 @@ export interface Message {
 export class Context {
   private frames: Message[];
   private shared: boolean;
-  private readonly taken = new WeakSet<Context>();
 
   constructor(frames: Message[] = [], shared = false) {
     this.frames = frames;
@@ -51,15 +50,22 @@ export class Context {
     return new Context(this.frames, true);
   }
 
-  /** Append only the source suffix that this context does not already share. */
+  /** Append only frames this context does not already hold by identity. */
   absorb(other: Context): void {
-    if (this.taken.has(other)) return;
-    this.taken.add(other);
     const mine = this.frames;
     const theirs = other.frames;
     let i = 0;
     const n = mine.length < theirs.length ? mine.length : theirs.length;
     while (i < n && mine[i] === theirs[i]) i++;
-    if (i < theirs.length) this.appendMany(theirs.slice(i));
+    if (i >= theirs.length) return;
+    const have = new Set<Message>(mine);
+    const extra: Message[] = [];
+    for (; i < theirs.length; i++) {
+      const frame = theirs[i]!;
+      if (have.has(frame)) continue;
+      extra.push(frame);
+      have.add(frame);
+    }
+    if (extra.length) this.appendMany(extra);
   }
 }
