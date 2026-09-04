@@ -101,7 +101,7 @@ export function openaiModel(opts: { id: string; baseUrl: string; model: string; 
     async reason(req, out, signal) {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (key) headers.Authorization = "Bearer " + key;
-      const body: Record<string, unknown> = { model: opts.model, messages: req.messages };
+      const body: Record<string, unknown> = { model: opts.model, messages: toOpenAI(req.messages) };
       if (req.tools.length) {
         body.tools = req.tools.map((t) => ({
           type: "function",
@@ -130,4 +130,30 @@ export function openaiModel(opts: { id: string; baseUrl: string; model: string; 
       }
     },
   };
+}
+
+function toOpenAI(messages: readonly Message[]): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = new Array(messages.length);
+  for (let i = 0; i < messages.length; i++) {
+    const m = messages[i]!;
+    if (m.role === "tool") {
+      out[i] = { role: "tool", content: m.content, tool_call_id: m.toolCallId ?? "" };
+      continue;
+    }
+    if (m.role === "assistant" && m.toolCalls && m.toolCalls.length > 0) {
+      const calls: Record<string, unknown>[] = new Array(m.toolCalls.length);
+      for (let j = 0; j < m.toolCalls.length; j++) {
+        const c = m.toolCalls[j]!;
+        calls[j] = {
+          id: c.id,
+          type: "function",
+          function: { name: c.name, arguments: JSON.stringify(c.arguments ?? {}) },
+        };
+      }
+      out[i] = { role: "assistant", content: m.content || null, tool_calls: calls };
+      continue;
+    }
+    out[i] = { role: m.role, content: m.content };
+  }
+  return out;
 }

@@ -50,6 +50,7 @@ export class Run {
   private readonly events: { t: string; d?: unknown }[] = [];
   private waiters: ((v: Explain) => void)[] = [];
   private pauseAfterStep = false;
+  private forks = 0;
 
   constructor(
     id: string,
@@ -136,17 +137,7 @@ export class Run {
       this.hooks.onError?.(this.id, e);
       throw e;
     }
-    if (this.ac.signal.aborted) {
-      this.state = CANCELLED;
-      this.finish();
-    } else if (this.pauseAfterStep) {
-      this.state = PAUSED;
-      this.hooks.onPause?.(this.id);
-      this.emit("pause");
-    } else {
-      this.state = PAUSED;
-    }
-    return this.explain();
+    return this.hold();
   }
 
   /** Public: exactly one loop cycle. */
@@ -161,8 +152,7 @@ export class Run {
       this.hooks.onError?.(this.id, e);
       throw e;
     }
-    this.state = PAUSED;
-    return this.explain();
+    return this.hold();
   }
 
   async retryStep(): Promise<Explain> {
@@ -201,7 +191,7 @@ export class Run {
   }
 
   fork(opts?: { model?: string }): Run {
-    const child = new Run(this.id + ":f" + this.step, this.models, {
+    const child = new Run(this.id + ":f" + this.forks++, this.models, {
       hooks: this.hooks,
       context: this.context.fork(),
     });
@@ -256,5 +246,23 @@ export class Run {
     const w = this.waiters;
     this.waiters = [];
     for (let i = 0; i < w.length; i++) w[i]!(snap);
+  }
+
+  /** Keep a finished state. Pause only if the run is still open. */
+  private hold(): Explain {
+    if (this.state === STOPPED || this.state === CANCELLED) return this.explain();
+    if (this.ac.signal.aborted) {
+      this.state = CANCELLED;
+      this.finish();
+      return this.explain();
+    }
+    if (this.pauseAfterStep) {
+      this.state = PAUSED;
+      this.hooks.onPause?.(this.id);
+      this.emit("pause");
+    } else {
+      this.state = PAUSED;
+    }
+    return this.explain();
   }
 }

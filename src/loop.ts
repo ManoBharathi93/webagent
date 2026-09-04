@@ -1,10 +1,10 @@
 import { Assembler } from "./assembler.ts";
-import type { Context } from "./context.ts";
+import type { Context, Message } from "./context.ts";
 import { decide, type HookBag } from "./hooks.ts";
 import type { Model, ModelShelf } from "./models.ts";
 import { blockedAction } from "./policy.ts";
 import type { Tool } from "./tools.ts";
-import { PHASE_IDLE, PHASE_REASON, PHASE_TOOL } from "./state.ts";
+import { CANCELLED, PHASE_IDLE, PHASE_REASON, PHASE_TOOL, STOPPED } from "./state.ts";
 
 export interface LoopHost {
   id: string;
@@ -12,6 +12,7 @@ export interface LoopHost {
   modelId: string | null;
   tools: Tool[];
   phase: number;
+  state: number;
   hooks: HookBag;
   ac: AbortController;
   setPhase(p: number): void;
@@ -40,7 +41,15 @@ export async function oneStep(host: LoopHost, models: ModelShelf): Promise<{ tex
 
   const out = assembler.end();
   host.hooks.afterReason?.(host.id, out.text);
-  if (out.text) host.context.append({ role: "assistant", content: out.text });
+  if (isClosed(host)) {
+    host.setPhase(PHASE_IDLE);
+    return { text: out.text, stopped: true };
+  }
+  if (out.text || out.toolCalls.length > 0) {
+    const frame: Message = { role: "assistant", content: out.text };
+    if (out.toolCalls.length > 0) frame.toolCalls = out.toolCalls;
+    host.context.append(frame);
+  }
 
   if (out.toolCalls.length === 0) {
     host.setPhase(PHASE_IDLE);
@@ -49,6 +58,7 @@ export async function oneStep(host: LoopHost, models: ModelShelf): Promise<{ tex
 
   host.setPhase(PHASE_TOOL);
   for (let i = 0; i < out.toolCalls.length; i++) {
+    if (isClosed(host)) break;
     const tc = out.toolCalls[i]!;
     let name = tc.name;
     const tv = await decide(host.hooks.beforeTool, host.id, name, tc.arguments);
@@ -70,11 +80,16 @@ export async function oneStep(host: LoopHost, models: ModelShelf): Promise<{ tex
     const result = tool
       ? await tool.call(tc.arguments, host.ac.signal)
       : { error: "unknown_tool", reason: name };
+    if (isClosed(host)) break;
     host.hooks.afterTool?.(host.id, name, result);
     host.context.append({ role: "tool", content: JSON.stringify(result), toolCallId: tc.id });
   }
   host.setPhase(PHASE_IDLE);
   return { text: out.text };
+}
+
+function isClosed(host: LoopHost): boolean {
+  return host.state === STOPPED || host.state === CANCELLED;
 }
 
 function findTool(tools: Tool[], name: string): Tool | undefined {

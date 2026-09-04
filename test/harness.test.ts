@@ -123,6 +123,89 @@ describe("controls", () => {
     expect(parent.getContext().some((m) => m.content === "child-only")).toBe(false);
   });
 
+  test("tool step keeps the assistant tool call in history", async () => {
+    const seen: string[] = [];
+    const tool: Tool = {
+      name: "lookup",
+      async call() {
+        return { city: "X" };
+      },
+    };
+    const model: Model = {
+      id: "toolish",
+      ready: true,
+      supportsTools: true,
+      async reason(req, out) {
+        const last = req.messages[req.messages.length - 1];
+        seen.push(last?.role ?? "none");
+        if (last?.role === "tool") {
+          const prior = req.messages[req.messages.length - 2];
+          expect(prior?.role).toBe("assistant");
+          expect(prior?.toolCalls?.[0]).toEqual({ id: "c1", name: "lookup", arguments: { city: "X" } });
+          out.pushText("done");
+          return;
+        }
+        out.pushToolDelta(0, "c1", "lookup", '{"city":"X"}');
+      },
+    };
+    const h = new Harness();
+    h.addModel(model);
+    const run = h.create({ model: "toolish", tools: [tool] });
+    run.inject({ text: "go" });
+    await run.start();
+    expect(seen).toEqual(["user", "tool"]);
+    const roles = run.getContext().map((m) => m.role);
+    expect(roles).toContain("assistant");
+    expect(run.getContext().some((m) => m.role === "assistant" && m.toolCalls?.[0]?.id === "c1")).toBe(true);
+  });
+
+  test("stop during an in-flight start stays stopped", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    const h = new Harness();
+    h.addModel({
+      id: "slow",
+      ready: true,
+      async reason(_r, out) {
+        await gate;
+        out.pushText("late");
+      },
+    });
+    const run = h.create({ model: "slow" });
+    run.inject({ text: "x" });
+    const pending = run.start();
+    run.stop();
+    release();
+    const ex = await pending;
+    expect(ex.state).toBe("stopped");
+    expect(run.getContext().some((m) => m.content === "late")).toBe(false);
+  });
+
+  test("repeated forks keep distinct ids", () => {
+    const h = new Harness();
+    const parent = h.create();
+    const a = h.fork(parent.id);
+    const b = h.fork(parent.id);
+    expect(a.id).not.toBe(b.id);
+    expect(h.get(a.id)).toBe(a);
+    expect(h.get(b.id)).toBe(b);
+    expect(h.listRuns()).toHaveLength(3);
+  });
+
+  test("merge of a fork keeps the shared prefix once", () => {
+    const h = new Harness();
+    const parent = h.create({ model: "echo" });
+    parent.inject({ text: "shared" });
+    const child = h.fork(parent.id);
+    child.inject({ text: "branch" });
+    parent.merge(child);
+    const texts = parent.getContext().map((m) => m.content);
+    expect(texts.filter((t) => t === "shared")).toHaveLength(1);
+    expect(texts).toContain("branch");
+  });
+
   test("merge folds source into target and stops source", async () => {
     const h = new Harness();
     const a = h.create({ model: "echo" });
