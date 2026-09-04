@@ -12,6 +12,7 @@ export interface Message {
 export class Context {
   private frames: Message[];
   private shared: boolean;
+  private readonly taken = new WeakSet<Context>();
 
   constructor(frames: Message[] = [], shared = false) {
     this.frames = frames;
@@ -52,6 +53,8 @@ export class Context {
 
   /** Append only the source suffix that this context does not already share. */
   absorb(other: Context): void {
+    if (this.taken.has(other)) return;
+    this.taken.add(other);
     const mine = this.frames;
     const theirs = other.frames;
     let i = 0;

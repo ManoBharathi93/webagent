@@ -312,6 +312,40 @@ describe("controls", () => {
     b.merge(a);
     expect(a.explain().state).toBe("stopped");
     expect(b.getContext().some((m) => m.content === "from-a")).toBe(true);
+    b.merge(a);
+    expect(b.getContext().filter((m) => m.content === "from-a")).toHaveLength(1);
+  });
+
+  test("a thrown tool hook still fills every tool result", async () => {
+    const model: Model = {
+      id: "pair",
+      ready: true,
+      supportsTools: true,
+      async reason(_req, out) {
+        out.pushToolDelta(0, "c1", "one", "{}");
+        out.pushToolDelta(1, "c2", "two", "{}");
+      },
+    };
+    const h = new Harness();
+    h.addModel(model);
+    const run = h.create({
+      model: "pair",
+      tools: [
+        { name: "one", async call() { return { n: 1 }; } },
+        { name: "two", async call() { return { n: 2 }; } },
+      ],
+      hooks: {
+        beforeTool: (_id, name) => {
+          if (name === "two") throw new Error("boom");
+          return "allow";
+        },
+      },
+    });
+    run.inject({ text: "go" });
+    await expect(run.start()).rejects.toThrow(/boom/);
+    const tools = run.getContext().filter((m) => m.role === "tool");
+    expect(tools.map((m) => m.toolCallId).sort()).toEqual(["c1", "c2"]);
+    expect(tools.some((m) => m.content.includes("boom"))).toBe(true);
   });
 
   test("inject mid-run adds user text", async () => {

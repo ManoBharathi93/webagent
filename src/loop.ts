@@ -54,56 +54,69 @@ export async function oneStep(host: LoopHost, models: ModelShelf): Promise<{ tex
 
   host.setPhase(PHASE_TOOL);
   host.context.append({ role: "assistant", content: out.text, toolCalls: out.toolCalls });
-  for (let i = 0; i < out.toolCalls.length; i++) {
-    const tc = out.toolCalls[i]!;
-    if (isClosed(host)) {
-      stubRest(host, out.toolCalls, i);
-      host.setPhase(PHASE_IDLE);
-      return { text: out.text, stopped: true };
-    }
-    let name = tc.name;
-    const tv = await decide(host.hooks.beforeTool, host.id, name, tc.arguments);
-    if (isClosed(host)) {
-      stubRest(host, out.toolCalls, i);
-      host.setPhase(PHASE_IDLE);
-      return { text: out.text, stopped: true };
-    }
-    if (tv === "deny") {
-      host.context.append({ role: "tool", content: JSON.stringify({ error: "blocked_by_hook", reason: "denied" }), toolCallId: tc.id });
-      continue;
-    }
-    if (typeof tv === "object" && tv.redirect.tool) name = tv.redirect.tool;
+  try {
+    for (let i = 0; i < out.toolCalls.length; i++) {
+      const tc = out.toolCalls[i]!;
+      if (isClosed(host)) {
+        fillMissing(host, out.toolCalls, "stopped");
+        return { text: out.text, stopped: true };
+      }
+      let name = tc.name;
+      const tv = await decide(host.hooks.beforeTool, host.id, name, tc.arguments);
+      if (isClosed(host)) {
+        fillMissing(host, out.toolCalls, "stopped");
+        return { text: out.text, stopped: true };
+      }
+      if (tv === "deny") {
+        host.context.append({ role: "tool", content: JSON.stringify({ error: "blocked_by_hook", reason: "denied" }), toolCallId: tc.id });
+        continue;
+      }
+      if (typeof tv === "object" && tv.redirect.tool) name = tv.redirect.tool;
 
-    const policy = blockedAction(name);
-    if (policy) {
-      host.context.append({ role: "tool", content: JSON.stringify({ error: "blocked_by_policy", reason: policy }), toolCallId: tc.id });
-      continue;
-    }
+      const policy = blockedAction(name);
+      if (policy) {
+        host.context.append({ role: "tool", content: JSON.stringify({ error: "blocked_by_policy", reason: policy }), toolCallId: tc.id });
+        continue;
+      }
 
-    const tool = findTool(host.tools, name);
-    const result = tool
-      ? await tool.call(tc.arguments, host.ac.signal)
-      : { error: "unknown_tool", reason: name };
-    host.hooks.afterTool?.(host.id, name, result);
-    host.context.append({ role: "tool", content: JSON.stringify(result), toolCallId: tc.id });
-    if (isClosed(host)) {
-      stubRest(host, out.toolCalls, i + 1);
-      host.setPhase(PHASE_IDLE);
-      return { text: out.text, stopped: true };
+      const tool = findTool(host.tools, name);
+      const result = tool
+        ? await tool.call(tc.arguments, host.ac.signal)
+        : { error: "unknown_tool", reason: name };
+      host.hooks.afterTool?.(host.id, name, result);
+      host.context.append({ role: "tool", content: JSON.stringify(result), toolCallId: tc.id });
+      if (isClosed(host)) {
+        fillMissing(host, out.toolCalls, "stopped");
+        return { text: out.text, stopped: true };
+      }
     }
+    return { text: out.text };
+  } catch (e) {
+    const reason = e instanceof Error ? e.message : String(e);
+    fillMissing(host, out.toolCalls, reason);
+    throw e;
+  } finally {
+    host.setPhase(PHASE_IDLE);
   }
-  host.setPhase(PHASE_IDLE);
-  return { text: out.text };
 }
 
 function isClosed(host: LoopHost): boolean {
   return host.state === STOPPED || host.state === CANCELLED;
 }
 
-function stubRest(host: LoopHost, calls: { id: string }[], from: number): void {
-  const stopped = JSON.stringify({ error: "stopped" });
-  for (let i = from; i < calls.length; i++) {
-    host.context.append({ role: "tool", content: stopped, toolCallId: calls[i]!.id });
+function fillMissing(host: LoopHost, calls: { id: string }[], reason: string): void {
+  const have = new Set<string>();
+  const view = host.context.view();
+  for (let i = 0; i < view.length; i++) {
+    const id = view[i]!.toolCallId;
+    if (view[i]!.role === "tool" && id) have.add(id);
+  }
+  const body = JSON.stringify({ error: reason === "stopped" ? "stopped" : "tool_error", reason });
+  for (let i = 0; i < calls.length; i++) {
+    const id = calls[i]!.id;
+    if (have.has(id)) continue;
+    host.context.append({ role: "tool", content: body, toolCallId: id });
+    have.add(id);
   }
 }
 
