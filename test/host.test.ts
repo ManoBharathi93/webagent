@@ -134,6 +134,28 @@ describe("host route + shared room", () => {
     expect(ctx.indexOf("alpha first")).toBeLessThan(ctx.indexOf("beta second"));
   });
 
+  test("a public room rejects run create and site ingest", async () => {
+    const h = new Harness();
+    const room = new Room(h);
+    const fetchFn = host(h, room);
+    const created = await fetchFn(
+      new Request("http://t/runs", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text: "hi", model: "echo" }),
+      }),
+    );
+    expect(created.status).toBe(404);
+    const site = await fetchFn(
+      new Request("http://t/sites", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url: "https://www.corgi.insure" }),
+      }),
+    );
+    expect(site.status).toBe(404);
+  });
+
   test("two machine chats share one runId and the second sees the first", async () => {
     const h = new Harness();
     const hosted = listen(h, { port: 0, hostname: "127.0.0.1" });

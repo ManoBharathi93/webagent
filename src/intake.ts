@@ -10,8 +10,10 @@ export function intake(harness: Harness, room?: Room): (req: Request) => Promise
   return async (req: Request) => {
     const url = new URL(req.url);
     if (url.pathname === "/mcp") return mcpFetch(req);
-    const site = await sites(req, url);
-    if (site) return site;
+    if (!room) {
+      const site = await sites(req, url);
+      if (site) return site;
+    }
     if (req.method === "GET" && url.pathname === "/models") {
       return Response.json(harness.getAvailableModels());
     }
@@ -19,6 +21,7 @@ export function intake(harness: Harness, room?: Room): (req: Request) => Promise
       return Response.json(harness.getHealth());
     }
     if (req.method === "POST" && url.pathname === "/runs") {
+      if (room) return new Response("not found", { status: 404 });
       const body = (await req.json().catch(() => ({}))) as { text?: string; model?: string };
       const run = harness.create({ model: body.model ?? "echo" });
       if (body.text) run.inject({ text: body.text });
