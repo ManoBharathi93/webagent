@@ -506,6 +506,49 @@ describe("controls", () => {
     expect(frozen.some((c) => c.includes("late"))).toBe(false);
   });
 
+  test("a rejected in-flight tool does not write after stop", async () => {
+    let reject!: (e: Error) => void;
+    let entered!: () => void;
+    const gate = new Promise<never>((_, r) => {
+      reject = r;
+    });
+    const inTool = new Promise<void>((r) => {
+      entered = r;
+    });
+    const h = new Harness();
+    h.addModel({
+      id: "boom",
+      ready: true,
+      supportsTools: true,
+      async reason(_req, out) {
+        out.pushToolDelta(0, "c1", "lookup", "{}");
+      },
+    });
+    const run = h.create({
+      model: "boom",
+      tools: [{
+        name: "lookup",
+        async call() {
+          entered();
+          await gate;
+          return { n: 1 };
+        },
+      }],
+    });
+    run.inject({ text: "go" });
+    const pending = run.start();
+    await inTool;
+    run.stop();
+    const frozen = run.getContext().map((m) => `${m.role}:${m.content}`);
+    reject(new Error("exploded"));
+    try {
+      await pending;
+    } catch {
+      // throw is optional; the invariant is that history stays frozen
+    }
+    expect(run.getContext().map((m) => `${m.role}:${m.content}`)).toEqual(frozen);
+  });
+
   test("duplicate tool ids in one step each get a result", async () => {
     const model: Model = {
       id: "dup",

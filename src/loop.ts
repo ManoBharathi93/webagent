@@ -110,12 +110,16 @@ export async function oneStep(host: LoopHost, models: ModelShelf): Promise<{ tex
       const result = tool
         ? await tool.call(tc.arguments, host.ac.signal)
         : { error: "unknown_tool", reason: name };
+      const rec = result as Record<string, unknown>;
+      const failed = rec != null && "error" in rec;
       if (host.pending) {
         host.pending.busy = -1;
-        host.pending.results[i] = result as Record<string, unknown>;
+        if (!isClosed(host) || !failed) host.pending.results[i] = rec;
       }
       if (isClosed(host)) {
-        commitPending(host, "stopped");
+        const keep = host.pending?.results.some((r) => r != null);
+        if (keep) commitPending(host, "stopped");
+        else host.pending = null;
         return { text: out.text, stopped: true };
       }
       host.hooks.afterTool?.(host.id, name, result);
@@ -127,10 +131,11 @@ export async function oneStep(host: LoopHost, models: ModelShelf): Promise<{ tex
     commitPending(host, null);
     return { text: out.text };
   } catch (e) {
-    if (host.pending) {
-      host.pending.busy = -1;
-      const reason = isClosed(host) ? "stopped" : e instanceof Error ? e.message : String(e);
+    if (host.pending && !isClosed(host)) {
+      const reason = e instanceof Error ? e.message : String(e);
       commitPending(host, reason);
+    } else {
+      host.pending = null;
     }
     throw e;
   } finally {
