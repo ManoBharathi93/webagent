@@ -447,7 +447,7 @@ describe("controls", () => {
             entered();
             await gate;
           }
-          return "allow";
+          return "allow" as const;
         },
       },
     });
@@ -491,7 +491,7 @@ describe("controls", () => {
         beforeTool: async () => {
           entered();
           await gate;
-          return "allow";
+          return "allow" as const;
         },
       },
     });
