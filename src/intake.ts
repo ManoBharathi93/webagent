@@ -1,10 +1,11 @@
 import type { Harness } from "./harness.ts";
+import type { Room } from "./host/room.ts";
 import { mcp } from "./mcp.ts";
 import { siteHttp } from "./site/http.ts";
 
 /** Thin HTTP edge: many requests → many runs. No reasoning here. */
-export function intake(harness: Harness): (req: Request) => Promise<Response> {
-  const mcpFetch = mcp(harness);
+export function intake(harness: Harness, room?: Room): (req: Request) => Promise<Response> {
+  const mcpFetch = mcp(harness, room);
   const sites = siteHttp(harness);
   return async (req: Request) => {
     const url = new URL(req.url);

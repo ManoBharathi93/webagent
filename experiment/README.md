@@ -2,17 +2,17 @@
 
 Two public agents. One crawled site. One network report.
 
-Story of the thread that built this: [CONVERSATION.md](../CONVERSATION.md). Live Corgi numbers: [corgi-analysis.md](corgi-analysis.md).
+A founder who must hand a CEO a live seller: [HANDOFF.md](HANDOFF.md). Wire note for that CEO: [customer-prompt.md](customer-prompt.md).
 
 ```sh
-bun experiment/run.ts --site https://www.corgi.insure
+bun src/cli.ts pair https://www.corgi.insure --keep --turns 0
 ```
 
 | Agent | Role | Port (CLI default) |
 | --- | --- | --- |
 | Seller | Sales pack (`attachSales`): `map_risks` + pinpoint report | 8787 via `webagent pair` (0 in tests) |
-| Buyer | Founder. Tool `ask_peer` → seller `/chat` as a machine | 8788 |
+| Buyer | Optional canned turns. Skip with `--turns 0`. | 8788 |
 
-Model: `cursor` when `CURSOR_API_KEY` is set. Otherwise `script` (calls the same tools, no Cursor network).
+`auto` picks cursor, then openrouter, then script. Default OpenRouter model is `openai/gpt-4o-mini`.
 
-Flags: `--site` `--max-pages` `--seller-port` `--buyer-port` `--model auto|cursor|script` `--out` `--keep`.
+Flags: `--site` `--max-pages` `--seller-port` `--buyer-port` `--model auto|cursor|openrouter|script` `--turns N` `--out` `--keep`.

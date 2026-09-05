@@ -3,6 +3,7 @@
  * No private loop path — every verb is create/start/pause/fork/… already on Harness or Run.
  */
 import type { Harness } from "./harness.ts";
+import type { Room } from "./host/room.ts";
 import type { Run } from "./run.ts";
 import { attachPack } from "./site/attach.ts";
 import { siteBook } from "./site/book.ts";
@@ -14,7 +15,7 @@ interface ToolDef {
   name: string;
   description: string;
   inputSchema: Record<string, unknown>;
-  call: (h: Harness, args: Record<string, unknown>) => Promise<unknown> | unknown;
+  call: (h: Harness, args: Record<string, unknown>, room?: Room) => Promise<unknown> | unknown;
 }
 
 const ID = {
@@ -207,6 +208,25 @@ const TOOLS: ToolDef[] = [
     call: (h, a) => must(h, a).listTools(),
   },
   {
+    name: "say",
+    description: "Talk to the public run. Same conversation. Do not create a new run.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        text: { type: "string", description: "what the customer says" },
+        id: { type: "string", description: "must match the public run if set" },
+      },
+      required: ["text"],
+    },
+    call: async (_h, a, room) => {
+      const text = str(a, "text");
+      const id = optStr(a, "id");
+      if (!room) throw new Error("no public run");
+      if (id && id !== room.run.id) throw new Error("unknown run " + id);
+      return room.say("machine", text);
+    },
+  },
+  {
     name: "inject",
     description: "add user text / model / pinned vars",
     inputSchema: {
@@ -322,7 +342,7 @@ const TOOLS: ToolDef[] = [
 const BY_NAME = new Map(TOOLS.map((t) => [t.name, t]));
 
 /** Fetch handler for one MCP endpoint. Mount at /mcp or use standalone. */
-export function mcp(harness: Harness): (req: Request) => Promise<Response> {
+export function mcp(harness: Harness, room?: Room): (req: Request) => Promise<Response> {
   const sessions = new Set<string>();
   let seq = 0;
 
@@ -355,6 +375,12 @@ export function mcp(harness: Harness): (req: Request) => Promise<Response> {
         protocolVersion: MCP_PROTOCOL,
         capabilities: { tools: { listChanged: false } },
         serverInfo: { name: "webagent", version: "0.4.0" },
+        ...(room
+          ? {
+              instructions:
+                "Use say with the customer text. Same public run every turn. Do not create. Do not GET /live.",
+            }
+          : {}),
       });
       res.headers.set("Mcp-Session-Id", sid);
       return res;
@@ -364,7 +390,7 @@ export function mcp(harness: Harness): (req: Request) => Promise<Response> {
     if (!sid || !sessions.has(sid)) return new Response("missing session", { status: 400 });
 
     try {
-      const result = await dispatch(harness, msg.method, msg.params);
+      const result = await dispatch(harness, msg.method, msg.params, room);
       return rpc(req, msg.id, result);
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
@@ -374,7 +400,7 @@ export function mcp(harness: Harness): (req: Request) => Promise<Response> {
   };
 }
 
-async function dispatch(h: Harness, method: string, params: unknown): Promise<unknown> {
+async function dispatch(h: Harness, method: string, params: unknown, room?: Room): Promise<unknown> {
   if (method === "ping") return {};
   if (method === "tools/list") {
     return {
@@ -386,7 +412,7 @@ async function dispatch(h: Harness, method: string, params: unknown): Promise<un
     const def = p.name ? BY_NAME.get(p.name) : undefined;
     if (!def) throw new Error("unknown tool " + (p.name ?? ""));
     try {
-      const data = await def.call(h, p.arguments ?? {});
+      const data = await def.call(h, p.arguments ?? {}, room);
       return { content: [{ type: "text", text: JSON.stringify(data) }], isError: false };
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
