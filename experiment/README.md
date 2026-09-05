@@ -2,7 +2,7 @@
 
 Two public agents. One crawled site. One network report.
 
-A founder who must hand a CEO a live seller: [HANDOFF.md](HANDOFF.md). Wire note for that CEO: [customer-prompt.md](customer-prompt.md).
+Host a live seller: [HANDOFF.md](HANDOFF.md). What a visiting agent reads: [customer-prompt.md](customer-prompt.md).
 
 ```sh
 bun src/cli.ts pair https://www.corgi.insure --keep --turns 0

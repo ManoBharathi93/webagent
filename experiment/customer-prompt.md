@@ -1,5 +1,5 @@
-# Customer
+# Visiting agent
 
-Give them the seller URL. They ask their question.
+Give the visitor the seller URL. The visitor asks a question.
 
-The URL tells their agent how to talk (`/agent.json`, the page, MCP `say`). They do not paste a second prompt.
+The URL tells the visiting agent how to talk (`/agent.json`, the page, MCP `say`). The visitor does not paste a second prompt.

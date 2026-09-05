@@ -315,7 +315,7 @@ export function asMarkdown(r: Awaited<ReturnType<typeof runPair>>): string {
     "",
     "## Agents",
     "",
-    "| | Seller (Corgi) | Buyer (founder) |",
+    "| | Seller (Corgi) | Buyer |",
     "| --- | --- | --- |",
     "| url | " + r.seller.url + " | " + r.buyer.url + " |",
     "| run | `" + r.seller.runId + "` | `" + r.buyer.runId + "` |",

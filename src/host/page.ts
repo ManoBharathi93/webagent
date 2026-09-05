@@ -1,6 +1,6 @@
 import type { Room } from "./room.ts";
 
-/** How a visiting agent talks. Lives on the URL. The CEO does not type this. */
+/** How a visiting agent talks. Lives on the URL. The visitor does not type this. */
 export function sayHow(runId: string): string {
   return (
     "POST /chat {\"text\":\"<ask>\"} on run " +
