@@ -137,6 +137,7 @@ export class Run {
       }
     } catch (e) {
       this.hooks.onError?.(this.id, e);
+      this.hold();
       throw e;
     }
     return this.hold();
@@ -154,6 +155,7 @@ export class Run {
       }
     } catch (e) {
       this.hooks.onError?.(this.id, e);
+      this.hold();
       throw e;
     }
     return this.hold();
@@ -179,7 +181,7 @@ export class Run {
   }
 
   stop(): Explain {
-    commitPending(this, "stopped");
+    if (!this.pending || this.pending.busy < 0) commitPending(this, "stopped");
     this.state = STOPPED;
     this.hooks.onStop?.(this.id);
     this.emit("stop");
@@ -189,7 +191,7 @@ export class Run {
 
   cancel(): Explain {
     this.ac.abort();
-    commitPending(this, "stopped");
+    if (!this.pending || this.pending.busy < 0) commitPending(this, "stopped");
     this.state = CANCELLED;
     this.hooks.onStop?.(this.id);
     this.emit("cancel");

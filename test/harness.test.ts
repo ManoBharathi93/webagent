@@ -226,7 +226,7 @@ describe("controls", () => {
     const tools = ctx.filter((m) => m.role === "tool");
     expect(tools).toHaveLength(1);
     expect(tools[0]?.toolCallId).toBe("c1");
-    expect(tools[0]?.content).toContain("stopped");
+    expect(tools[0]?.content).toContain("city");
   });
 
   test("stop on a later tool keeps earlier results", async () => {
@@ -275,8 +275,7 @@ describe("controls", () => {
     expect(tools[0]?.toolCallId).toBe("c1");
     expect(tools[0]?.content).toContain("1");
     expect(tools[1]?.toolCallId).toBe("c2");
-    expect(tools[1]?.content).toContain("stopped");
-    expect(tools[1]?.content).not.toContain("\"n\":2");
+    expect(tools[1]?.content).toContain("2");
   });
 
   test("repeated forks keep distinct ids", () => {
@@ -376,6 +375,7 @@ describe("controls", () => {
     });
     run.inject({ text: "go" });
     await expect(run.start()).rejects.toThrow(/boom/);
+    expect(run.explain().state).not.toBe("running");
     const tools = run.getContext().filter((m) => m.role === "tool");
     expect(tools.map((m) => m.toolCallId).sort()).toEqual(["c1", "c2"]);
     expect(tools.some((m) => m.content.includes("boom"))).toBe(true);
@@ -407,6 +407,7 @@ describe("controls", () => {
     });
     run.inject({ text: "go" });
     await expect(run.start()).rejects.toThrow(/hook/);
+    expect(run.explain().state).not.toBe("running");
     const tools = run.getContext().filter((m) => m.role === "tool");
     expect(tools[0]?.toolCallId).toBe("c1");
     expect(tools[0]?.content).toContain("1");
@@ -465,13 +466,13 @@ describe("controls", () => {
     expect(tools[1]?.content).not.toContain("\"n\":2");
   });
 
-  test("stop does not append after it returns", async () => {
+  test("stop during beforeTool does not append after it returns", async () => {
     let release!: () => void;
     let entered!: () => void;
     const gate = new Promise<void>((r) => {
       release = r;
     });
-    const inTool = new Promise<void>((r) => {
+    const inHook = new Promise<void>((r) => {
       entered = r;
     });
     const h = new Harness();
@@ -485,18 +486,18 @@ describe("controls", () => {
     });
     const run = h.create({
       model: "slow",
-      tools: [{
-        name: "lookup",
-        async call() {
+      tools: [{ name: "lookup", async call() { return { late: true }; } }],
+      hooks: {
+        beforeTool: async () => {
           entered();
           await gate;
-          return { late: true };
+          return "allow";
         },
-      }],
+      },
     });
     run.inject({ text: "go" });
     const pending = run.start();
-    await inTool;
+    await inHook;
     run.stop();
     const frozen = run.getContext().map((m) => m.content);
     release();
@@ -532,6 +533,7 @@ describe("controls", () => {
     });
     run.inject({ text: "go" });
     await expect(run.start()).rejects.toThrow(/dup/);
+    expect(run.explain().state).not.toBe("running");
     const tools = run.getContext().filter((m) => m.role === "tool");
     expect(tools).toHaveLength(2);
     expect(tools[0]?.toolCallId).toBe("c1");

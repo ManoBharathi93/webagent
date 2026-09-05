@@ -10,6 +10,8 @@ export interface PendingBatch {
   text: string;
   calls: ToolCall[];
   results: (Record<string, unknown> | null)[];
+  /** Index of a tool.call that has not settled yet, or -1. */
+  busy: number;
 }
 
 export interface LoopHost {
@@ -82,6 +84,7 @@ export async function oneStep(host: LoopHost, models: ModelShelf): Promise<{ tex
     text: out.text,
     calls: out.toolCalls,
     results: out.toolCalls.map(() => null),
+    busy: -1,
   };
   try {
     for (let i = 0; i < out.toolCalls.length; i++) {
@@ -103,18 +106,29 @@ export async function oneStep(host: LoopHost, models: ModelShelf): Promise<{ tex
       }
 
       const tool = findTool(host.tools, name);
+      host.pending.busy = i;
       const result = tool
         ? await tool.call(tc.arguments, host.ac.signal)
         : { error: "unknown_tool", reason: name };
-      if (isClosed(host) || !host.pending) return { text: out.text, stopped: true };
-      host.pending.results[i] = result as Record<string, unknown>;
+      if (host.pending) {
+        host.pending.busy = -1;
+        host.pending.results[i] = result as Record<string, unknown>;
+      }
+      if (isClosed(host)) {
+        commitPending(host, "stopped");
+        return { text: out.text, stopped: true };
+      }
       host.hooks.afterTool?.(host.id, name, result);
     }
-    if (isClosed(host) || !host.pending) return { text: out.text, stopped: true };
+    if (isClosed(host)) {
+      commitPending(host, "stopped");
+      return { text: out.text, stopped: true };
+    }
     commitPending(host, null);
     return { text: out.text };
   } catch (e) {
     if (host.pending) {
+      host.pending.busy = -1;
       const reason = isClosed(host) ? "stopped" : e instanceof Error ? e.message : String(e);
       commitPending(host, reason);
     }
