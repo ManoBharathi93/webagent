@@ -110,6 +110,30 @@ describe("host route + shared room", () => {
     }
   });
 
+  test("overlapping say waits so the second turn sees the first", async () => {
+    const h = new Harness();
+    let release = () => {};
+    const hold = new Promise<void>((ok) => {
+      release = ok;
+    });
+    h.addModel({
+      id: "hold",
+      async reason(_req, out) {
+        await hold;
+        out.pushText("held");
+      },
+    });
+    const room = new Room(h, "hold");
+    const first = room.say("machine", "alpha first");
+    const second = room.say("machine", "beta second");
+    await new Promise((r) => setTimeout(r, 20));
+    expect(room.run.getContext().some((m) => m.content.includes("beta second"))).toBe(false);
+    release();
+    await Promise.all([first, second]);
+    const ctx = room.run.getContext().map((m) => m.content).join("\n");
+    expect(ctx.indexOf("alpha first")).toBeLessThan(ctx.indexOf("beta second"));
+  });
+
   test("two machine chats share one runId and the second sees the first", async () => {
     const h = new Harness();
     const hosted = listen(h, { port: 0, hostname: "127.0.0.1" });
@@ -132,6 +156,18 @@ describe("host route + shared room", () => {
       const ctx = hosted.room.run.getContext().map((m) => m.content).join("\n");
       expect(ctx).toContain("alpha token");
       expect(ctx).toContain("what did I say first");
+    } finally {
+      hosted.stop();
+    }
+  });
+
+  test("listen port stays the bound port when the public URL is a tunnel", async () => {
+    const h = new Harness();
+    const hosted = listen(h, { port: 0, hostname: "127.0.0.1", publicUrl: "https://agent.example" });
+    try {
+      expect(hosted.url).toBe("https://agent.example");
+      expect(hosted.port).toBeGreaterThan(0);
+      expect(hosted.port).not.toBe(443);
     } finally {
       hosted.stop();
     }

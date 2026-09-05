@@ -158,6 +158,7 @@ export async function runPair(opts: PairOpts) {
     },
     seller: {
       url: seller.url,
+      port: seller.port,
       runId: seller.room.run.id,
       model: seller.room.run.modelId,
       card: probes.sellerCard,
@@ -209,19 +210,9 @@ function addOpenrouter() {
 }
 
 export function printHandoff(r: Awaited<ReturnType<typeof runPair>>): void {
-  const port = portOf(r.seller.url);
-  console.error("same machine  http://127.0.0.1:" + port);
+  console.error("same machine  http://127.0.0.1:" + r.seller.port);
   console.error("other laptop  " + r.seller.url);
   console.error("model         " + r.model.used);
-}
-
-function portOf(url: string): string {
-  try {
-    const u = new URL(url);
-    return u.port || (u.protocol === "https:" ? "443" : "80");
-  } catch {
-    return "8787";
-  }
 }
 
 function lastAssistant(msgs: readonly { role: string; content: string }[]): string {
@@ -395,5 +386,5 @@ function parseArgs(argv: string[]): PairOpts {
 
 function flagNum(raw: string | undefined, fallback: number): number {
   const n = Number(raw);
-  return Number.isFinite(n) ? n : fallback;
+  return Number.isInteger(n) && n >= 0 ? n : fallback;
 }

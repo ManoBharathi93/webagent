@@ -1,3 +1,5 @@
+import type { SitePack } from "../site/types.ts";
+
 /**
  * Grounded risk notes from the Corgi public site. The model must not invent these.
  */
@@ -146,14 +148,39 @@ const FALLBACK: Omit<RiskNote, "category" | "does"> = {
   next: { label: "Get insured / demo", url: DEMO },
 };
 
-export function mapRisks(ask: RiskAsk): RiskNote {
+export function mapRisks(ask: RiskAsk, pack?: SitePack): RiskNote {
   const hay = ask.category + " " + ask.does;
+  let note: RiskNote = { category: ask.category, does: ask.does, ...FALLBACK };
   for (const row of ROWS) {
     if (row.match.test(hay)) {
-      return { category: ask.category, does: ask.does, ...row.note };
+      note = { category: ask.category, does: ask.does, ...row.note };
+      break;
     }
   }
-  return { category: ask.category, does: ask.does, ...FALLBACK };
+  return pack ? ground(note, pack) : note;
+}
+
+function packBlob(pack: SitePack): string {
+  return (
+    pack.origin +
+    "\n" +
+    pack.facts.join("\n") +
+    "\n" +
+    pack.pages.map((p) => p.url + " " + p.title + " " + p.text).join("\n")
+  ).toLowerCase();
+}
+
+function ground(note: RiskNote, pack: SitePack): RiskNote {
+  const blob = packBlob(pack);
+  const proofOk = note.proof.name !== "" && blob.includes(note.proof.name.toLowerCase());
+  const costOk = [...note.costBand.matchAll(/\$[\d,]+|\d+k/gi)].some((m) => blob.includes(m[0].toLowerCase()));
+  const nextOk = blob.includes(note.next.url.toLowerCase());
+  return {
+    ...note,
+    proof: proofOk ? note.proof : { kind: "none", name: "", why: "not in crawled pack" },
+    costBand: costOk ? note.costBand : "Cost not in crawled pack. Do not invent a price.",
+    next: nextOk ? note.next : { label: "See crawled site", url: pack.origin },
+  };
 }
 
 export function reportText(note: RiskNote): string {

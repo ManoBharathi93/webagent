@@ -339,8 +339,6 @@ const TOOLS: ToolDef[] = [
   },
 ];
 
-const BY_NAME = new Map(TOOLS.map((t) => [t.name, t]));
-
 /** Fetch handler for one MCP endpoint. Mount at /mcp or use standalone. */
 export function mcp(harness: Harness, room?: Room): (req: Request) => Promise<Response> {
   const sessions = new Set<string>();
@@ -404,14 +402,14 @@ async function dispatch(h: Harness, method: string, params: unknown, room?: Room
   if (method === "ping") return {};
   if (method === "tools/list") {
     return {
-      tools: TOOLS.map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })),
+      tools: listed(room).map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })),
     };
   }
   if (method === "tools/call") {
     const p = (params ?? {}) as { name?: string; arguments?: Record<string, unknown> };
-    const def = p.name ? BY_NAME.get(p.name) : undefined;
-    if (!def) throw new Error("unknown tool " + (p.name ?? ""));
+    const def = p.name ? listed(room).find((t) => t.name === p.name) : undefined;
     try {
+      if (!def) throw new Error("unknown tool " + (p.name ?? ""));
       const data = await def.call(h, p.arguments ?? {}, room);
       return { content: [{ type: "text", text: JSON.stringify(data) }], isError: false };
     } catch (e) {
@@ -449,6 +447,12 @@ function rpc(req: Request, id: unknown, result?: unknown, error?: RpcErr): Promi
 function wantsSSE(req: Request): boolean {
   const accept = req.headers.get("Accept") ?? "";
   return accept.includes("text/event-stream") && !accept.includes("application/json");
+}
+
+/** Public room: conversation only. Full harness verbs stay on intake without a room. */
+function listed(room?: Room): ToolDef[] {
+  if (!room) return TOOLS;
+  return TOOLS.filter((t) => t.name === "say");
 }
 
 function must(h: Harness, args: Record<string, unknown>): Run {

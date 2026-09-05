@@ -46,6 +46,14 @@ describe("map_risks and report", () => {
     expect(text.length).toBeLessThan(1800);
   });
 
+  test("pack without the customer or price drops those claims", () => {
+    const pack = buildPack(emptyCrawl());
+    const note = mapRisks({ category: "AI", does: "LLM agents for support" }, pack);
+    expect(note.proof.kind).toBe("none");
+    expect(note.costBand).toMatch(/not in crawled pack/i);
+    expect(note.next.url).toBe(pack.origin);
+  });
+
   test("SaaS seed maps to Intryc and a seed stack", () => {
     const note = mapRisks({ category: "SaaS", does: "B2B analytics" });
     expect(note.offer).toMatch(/Seed/i);

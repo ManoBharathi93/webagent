@@ -9,23 +9,23 @@ import { mapRisks, reportText } from "./risks.ts";
 /** Bind the Corgi (or any) pack as a sales person. Public controls only. */
 export function attachSales(h: Harness, pack: SitePack, opts?: { model?: string }): Run {
   const run = attachPack(h, pack, { model: opts?.model, instruction: salesInstruction(pack) });
-  const tool = riskTool();
+  const tool = riskTool(pack);
   h.addTool(tool);
   run.useTool(tool);
   return run;
 }
 
-export function riskTool(): Tool {
+export function riskTool(pack: SitePack): Tool {
   return {
     name: "map_risks",
-    description: "Given category and what the startup does, return grounded risks, penalties, proof, and a package.",
+    description: "Given category and what the startup does, return pack-grounded risks, penalties, proof, and a package.",
     schema: {
       type: "object",
       properties: { category: { type: "string" }, does: { type: "string" } },
       required: ["category", "does"],
     },
     async call(args) {
-      const note = mapRisks({ category: String(args.category ?? ""), does: String(args.does ?? "") });
+      const note = mapRisks({ category: String(args.category ?? ""), does: String(args.does ?? "") }, pack);
       return { ...note, report: reportText(note) };
     },
   };

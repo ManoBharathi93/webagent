@@ -91,5 +91,5 @@ function flagNum(argv: string[], name: string, fallback: number): number {
   const i = argv.indexOf(name);
   if (i < 0) return fallback;
   const n = Number(argv[i + 1]);
-  return Number.isFinite(n) ? n : fallback;
+  return Number.isInteger(n) && n >= 0 ? n : fallback;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { pickModel, runPair } from "../experiment/run.ts";
+import { pickModel, printHandoff, runPair } from "../experiment/run.ts";
 import { Harness } from "../src/harness.ts";
 import { listen } from "../src/host/listen.ts";
 import { openaiModel } from "../src/models.ts";
@@ -105,6 +105,24 @@ describe("pair experiment", () => {
       site.stop(true);
     }
   }, 30000);
+
+  test("handoff loopback uses the listen port, not a tunnel port", () => {
+    const lines: string[] = [];
+    const prev = console.error;
+    console.error = (m: unknown) => {
+      lines.push(String(m));
+    };
+    try {
+      printHandoff({
+        seller: { url: "https://agent.example", port: 8787 },
+        model: { used: "openrouter" },
+      } as Parameters<typeof printHandoff>[0]);
+    } finally {
+      console.error = prev;
+    }
+    expect(lines.some((l) => l.includes("127.0.0.1:8787"))).toBe(true);
+    expect(lines.some((l) => l.includes("127.0.0.1:443"))).toBe(false);
+  });
 
   test("auto picks cursor, then openrouter, then script", () => {
     expect(pickModel("auto", true, true)).toBe("cursor");

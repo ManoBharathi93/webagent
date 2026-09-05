@@ -162,6 +162,19 @@ describe("mcp surface", () => {
     expect(session).toBeTruthy();
   });
 
+  test("a public room lists only say and rejects create", async () => {
+    const h = new Harness();
+    const room = new Room(h, "echo");
+    const fetchFn = mcp(h, room);
+    const session = await handshake(fetchFn);
+    const listed = (await call(fetchFn, session, "tools/list")).result as { tools: { name: string }[] };
+    const names = listed.tools.map((t) => t.name);
+    expect(names).toEqual(["say"]);
+    const created = await tool(fetchFn, session, "create", { text: "hi", model: "echo" });
+    expect(created.isError).toBe(true);
+    expect(String(created.data)).toMatch(/unknown tool/);
+  });
+
   test("initialize with a room tells the client to say, not create", async () => {
     const h = new Harness();
     const room = new Room(h, "echo");

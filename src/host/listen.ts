@@ -20,6 +20,8 @@ export interface ListenOpts {
 
 export interface Hosted {
   url: string;
+  /** Bound listen port. Use this for a same-machine URL, not a tunnel URL. */
+  port: number;
   room: Room;
   stop: () => void;
 }
@@ -40,10 +42,12 @@ export function listen(harness: Harness, opts: ListenOpts = {}): Hosted {
     idleTimeout: 120,
     fetch: opts.onHop ? tapFetch(host(harness, room, printed), opts.onHop) : host(harness, room, printed),
   });
-  const bound = showUrl(opts, localProto, server.port);
+  const boundPort = server.port ?? port;
+  const bound = showUrl(opts, localProto, boundPort);
 
   return {
     url: bound,
+    port: boundPort,
     room,
     stop: () => server.stop(true),
   };
