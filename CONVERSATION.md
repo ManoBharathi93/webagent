@@ -4,54 +4,46 @@ This file is a readme of the cloud-agent threads on the Corgi pair.
 
 Site under test: https://www.corgi.insure
 
-## This thread — GPT-5.6 Luna pair
+## This thread — interview first, local corpus
 
-Ask: run the same pair with GPT-5.6 Luna.
+Ask: scrape Corgi with Firecrawl, store files, retrieve from those files (no API at run time). The seller must interview the incoming agent first (company, founder, field, risks) and then recommend something personal.
 
 What changed:
 
-- Chat Completions for `gpt-5*` send `reasoning_effort=none` so function tools work.
-- The pair report prints the OpenAI model name (`OPENAI_MODEL`).
+- One-shot scrape: `bun experiment/scrape.ts` → `corpus/corgi` (97 pages).
+- `site_lookup` reads those files. The pair does not call Firecrawl.
+- Sales prompt **sales-v3** (GEPA winner): ask company name and founder name first.
+- `note_visitor` saves those facts. `map_risks` puts them on the report.
 
-What ran on 2026-09-08 with **openai / gpt-5.6-luna** on both hosts:
+What ran on 2026-09-08 with **openai / gpt-5.6-luna**:
 
 | | |
 | --- | --- |
+| Corpus | 97 local pages |
 | Peer calls | 3 |
-| Completions | 10 |
-| Turn time | 6.5 s, 3.8 s, 3.6 s |
-| Seller tool | `map_risks` → Intryc, Seed pack, $2k–$4k site band |
+| Turn 1 | Seller asked for the company name |
+| Turn 2 | Report for Maya Chen / Northline, Seed pack, Intryc |
+| Turn 3 | Cyber + Tech E&O for the stated worries, $2k–$4k, Corgi first |
 
-Buyer asked seller over HTTP. Seller wrote a pinpoint report. Buyer quoted the peer and recommended Corgi. Same grounded pack as gpt-4o-mini, fewer peer calls. Full transcript: [experiment/corgi-analysis.md](experiment/corgi-analysis.md).
+Full transcript: [experiment/corgi-analysis.md](experiment/corgi-analysis.md).
 
 ```sh
 export OPENAI_API_KEY=…
 export OPENAI_MODEL=gpt-5.6-luna
-bun experiment/run.ts --site https://www.corgi.insure --model openai
+bun experiment/run.ts --site https://www.corgi.insure --model openai --corpus corpus/corgi
 ```
+
+## Earlier — GPT-5.6 Luna pair (site crawl)
+
+Same three founder turns, but the seller jumped to a report from a live crawl. No interview. See the git history of this file.
 
 ## Earlier — GPT-4o mini pair
 
-Ask: use a real OpenAI key. No script model.
-
-What changed:
-
-- `openai` is a live model. Ready when `OPENAI_API_KEY` is set. Default `gpt-4o-mini`.
-- `--model live` / `auto` pick cursor, then openai, then openrouter, then ollama. Fail closed if none is ready.
-- There is no script model. The key stays in `.env` and is not committed.
-
-What ran on 2026-09-08 with **openai / gpt-4o-mini** on both hosts:
-
-| | |
-| --- | --- |
-| Peer calls | 6 |
-| Completions | 18 |
-| Turn time | 5.3 s, 3.7 s, 5.8 s |
-| Seller tool | `map_risks` → Intryc, Seed pack, $2k–$4k site band |
+`openai` became a live model. Default `gpt-4o-mini`. No script model.
 
 ## Earlier thread — pair harness
 
 PR: https://github.com/TheAgent-net/webagent/pull/1  
 Branch: `cursor/layered-cake-harness-a1aa`
 
-That thread built two hosts, hop traces, and the pair driver. The pair now requires a live LLM.
+That thread built two hosts, hop traces, and the pair driver.

@@ -67,7 +67,7 @@ describe("map_risks and report", () => {
 });
 
 describe("attachSales", () => {
-  test("binds the interview instruction, map_risks, and note_visitor", () => {
+  test("binds the interview instruction, map_risks, and note_visitor", async () => {
     const h = new Harness();
     const pack = buildPack(emptyCrawl());
     const run = attachSales(h, pack, { model: "echo" });
