@@ -17,7 +17,7 @@ import { peerTool } from "./peer.ts";
 const LIVE = ["cursor", "openai", "openrouter", "ollama", "mock"] as const;
 
 const TURNS = [
-  "I am a seed-stage SaaS founder. What coverage do I need and what does it cost?",
+  "I am a seed-stage SaaS founder. We sell a B2B analytics product to other software teams. What coverage do I need and what does it cost?",
   "How fast can I get a quote compared to a broker?",
   "Should I buy from Corgi or keep a traditional broker? Give a short recommendation.",
 ];

@@ -1,79 +1,60 @@
-# Corgi pair — live LLM report
+# Corgi pair — live OpenAI report
 
 Site: https://www.corgi.insure  
-Run: 2026-09-08T00:43:37Z  
+Run: 2026-09-08T01:23:49Z  
 Branch: `cursor/live-pair-llms-e5be`  
-Model: **ollama** `qwen2.5:7b` on both hosts (no Cursor key, no OpenRouter key)
+Model: **openai** `gpt-4o-mini` on both hosts
 
-Each reason step is a real chat completion. Buyer and seller are separate harnesses. There is no script model.
+This is a real agent-to-agent dialogue. Each reason step is an OpenAI chat completion. Buyer and seller are separate harnesses. There is no script model.
 
 ```
-human ──POST /chat──► buyer (ollama)
-                         │ ask_peer × 3
+human ──POST /chat──► buyer (openai gpt-4o-mini)
+                         │ ask_peer × 6
                          ▼
-                      seller (ollama) ── compose from sales instruction + pack pins
+                      seller (openai gpt-4o-mini) ── map_risks ──► grounded Seed pack
 ```
 
 ## What ran
 
 | Agent | Role | Bind | Model |
 | --- | --- | --- | --- |
-| Seller | Corgi sales run (`attachSales`) | `r1` | `ollama` / qwen2.5:7b |
-| Buyer | Founder. `ask_peer` → seller `/chat` as a machine | `r2` | `ollama` / qwen2.5:7b |
+| Seller | Corgi sales run (`attachSales`) | `r1` | `openai` / gpt-4o-mini |
+| Buyer | Founder. `ask_peer` → seller `/chat` as a machine | `r2` | `openai` / gpt-4o-mini |
 
 | Metric | Value |
 | --- | --- |
 | Pages | 40 (cap) |
-| Crawl hops | 44, all HTTP 200 |
-| Crawl time | 2.5 s |
-| Agent hops | 15 (2 human, 13 machine) |
-| Peer calls | **3** (one per founder turn) |
-| Live model calls | 9 |
-| Turn wall time | 51 s, 37 s, 49 s |
-| `sellerMayInventPrice` | true (`$1 million` is not on the crawled price tokens) |
+| Crawl hops | 44 |
+| Crawl time | 2.1 s |
+| Agent hops | 21 (2 human, 19 machine) |
+| Peer calls | 6 |
+| Live model calls | 18 |
+| Turn wall time | 5.3 s, 3.7 s, 5.8 s |
 
-Ready probes: cursor missing `CURSOR_API_KEY`, openrouter missing `OPENROUTER_API_KEY`, ollama `/api/tags` ok.
+Ready probes: cursor missing key, openai ready, openrouter missing key, ollama up (not used).
 
-## The three turns (composed, not relayed snippets)
+## The three turns
 
-**Turn 1 — “seed-stage SaaS… coverage… cost?”**  
-Seller wrote a pinpoint report: SaaS / seed-stage, cyber and product risk, CGL, link to the site. It named **Stripe** (not in the pack; `map_risks` would have named Intryc). It stated a **$1 million** limit (not a site premium).  
-Buyer called `ask_peer`, then summarized the peer for the founder.
+**Turn 1 — seed-stage SaaS, B2B analytics, coverage and cost**  
+Seller called `map_risks`. Report named **Intryc**, Seed package (CGL, D&O, Tech E&O, Cyber), site cost band **$2,000–$4,000** / year, link to corgi.insure.  
+Buyer quoted the peer and restated E&O, cyber, D&O and the cost band.
 
-**Turn 2 — “How fast vs a broker?”**  
-Buyer called `ask_peer` again. Seller kept the same report bones and pointed at `/quote`. Buyer said an online quote is faster than a broker.
+**Turn 2 — how fast vs a broker**  
+Seller: quote in minutes vs days or weeks for a broker. Link to `/startup-insurance`.  
+Buyer quoted that line.
 
-**Turn 3 — “Corgi or a traditional broker?”**  
-Buyer called `ask_peer` a third time. Seller compared speed and ease and kept the CGL offer. Buyer recommended Corgi for a quicker, tailored quote.
+**Turn 3 — Corgi or a traditional broker**  
+Seller repeated the Seed pack and recommended Corgi for speed and SaaS fit.  
+Buyer recommended Corgi and quoted the peer.
 
-## Live model calls
+## What this proves
 
-| ms | Side (order) | What |
-| --- | --- | --- |
-| 8596 | buyer | `ask_peer` |
-| 28413 | seller | pinpoint report |
-| 13788 | buyer | founder answer |
-| 5082 | buyer | `ask_peer` |
-| 22327 | seller | report + quote speed |
-| 9291 | buyer | founder answer |
-| 6214 | buyer | `ask_peer` |
-| 32390 | seller | Corgi vs broker |
-| 10639 | buyer | recommendation |
-
-## What the live models did
-
-- Buyer **composed** a founder answer after `ask_peer`.
-- Seller used the sales report shape from the GEPA instruction.
-- Turn times are tens of seconds (real completions).
-- The 7B seller also **drifted**: it skipped `map_risks` / `site_lookup`, invented Stripe, and invented a $1M limit.
-
-`--model live` and `--model auto` fail closed when no real LLM is ready.
-
-## Replay
+- Two public agents talked over HTTP with a real OpenAI model.
+- Seller used `map_risks` and stayed on pack names (Intryc, not Shopify).
+- Buyer composed a founder answer and quoted the peer.
+- The pair fails closed without a live key. The key lives in `.env` and is not committed.
 
 ```sh
-ollama pull qwen2.5:7b
-bun experiment/run.ts --site https://www.corgi.insure --model ollama
-# or, first ready of cursor / openrouter / ollama:
-bun experiment/run.ts --site https://www.corgi.insure --model live
+export OPENAI_API_KEY=…
+bun experiment/run.ts --site https://www.corgi.insure --model openai
 ```
