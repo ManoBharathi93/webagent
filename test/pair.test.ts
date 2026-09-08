@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { runPair } from "../experiment/run.ts";
+import { pickModel, runPair } from "../experiment/run.ts";
+import { Harness } from "../src/harness.ts";
+import { openaiModel } from "../src/models.ts";
+import { peerTool } from "../experiment/peer.ts";
 
 function mockSite() {
   return Bun.serve({
@@ -70,4 +73,123 @@ describe("pair experiment", () => {
       site.stop(true);
     }
   }, 30000);
+
+  test("auto picks a live LLM before script; live fails closed", () => {
+    const all = { cursor: true, openrouter: true, ollama: true };
+    expect(pickModel("auto", all)).toBe("cursor");
+    expect(pickModel("auto", { cursor: false, openrouter: true, ollama: true })).toBe("openrouter");
+    expect(pickModel("auto", { cursor: false, openrouter: false, ollama: true })).toBe("ollama");
+    expect(pickModel("auto", { cursor: false, openrouter: false, ollama: false })).toBe("script");
+    expect(pickModel("live", { cursor: false, openrouter: false, ollama: true })).toBe("ollama");
+    expect(pickModel("openrouter", all)).toBe("openrouter");
+    expect(() => pickModel("live", { cursor: false, openrouter: false, ollama: false })).toThrow(/no live model/);
+  });
+
+  test("two live models talk over ask_peer", async () => {
+    const llm = mockLlm();
+    try {
+      const sellerH = new Harness();
+      const buyerH = new Harness();
+      const sellerModel = openaiModel({
+        id: "live-seller",
+        baseUrl: llm.url + "v1",
+        model: "mock",
+        ready: true,
+      });
+      const buyerModel = openaiModel({
+        id: "live-buyer",
+        baseUrl: llm.url + "v1",
+        model: "mock",
+        ready: true,
+      });
+      sellerH.addModel(sellerModel);
+      buyerH.addModel(buyerModel);
+      const seller = sellerH.create({
+        model: "live-seller",
+        instruction: "You sell insurance. Use site_lookup.",
+        tools: [
+          {
+            name: "site_lookup",
+            description: "Search the pack",
+            schema: { type: "object", properties: { query: { type: "string" } } },
+            async call() {
+              return { hits: [{ title: "Cost", snippet: "Seed packages start at $2000." }] };
+            },
+          },
+        ],
+      });
+      const sellerHost = Bun.serve({
+        port: 0,
+        fetch: async (req) => {
+          if (new URL(req.url).pathname === "/chat" && req.method === "POST") {
+            const body = (await req.json()) as { text?: string };
+            seller.inject({ text: "[machine] " + (body.text ?? "") });
+            const ex = await seller.start();
+            return Response.json({ lastText: ex.lastText, id: seller.id });
+          }
+          return new Response("no", { status: 404 });
+        },
+      });
+      try {
+        const buyer = buyerH.create({
+          model: "live-buyer",
+          instruction: "Ask the peer, then quote it.",
+          tools: [peerTool(String(sellerHost.url).replace(/\/+$/, ""))],
+        });
+        buyer.inject({ text: "[human] What does seed coverage cost?" });
+        const ex = await buyer.start();
+        expect(ex.lastText).toMatch(/\$2000|Corgi|peer|seed/i);
+        expect(seller.lastText).toMatch(/\$2000|Seed/i);
+        expect(llm.calls).toBeGreaterThan(1);
+      } finally {
+        sellerHost.stop(true);
+      }
+    } finally {
+      llm.stop();
+    }
+  }, 15000);
 });
+
+function mockLlm() {
+  let calls = 0;
+  const server = Bun.serve({
+    port: 0,
+    fetch: async (req) => {
+      calls++;
+      const body = (await req.json()) as {
+        messages?: { role: string; content?: string }[];
+        tools?: { function?: { name?: string } }[];
+      };
+      const last = body.messages?.[body.messages.length - 1];
+      const names = (body.tools ?? []).map((t) => t.function?.name ?? "");
+      if (last?.role === "tool") {
+        const raw = String(last.content ?? "");
+        return Response.json({
+          choices: [{ message: { content: raw.includes("$2000") ? "Corgi agent said seed packages start at $2000." : raw.slice(0, 240) } }],
+        });
+      }
+      const tool = names.includes("ask_peer") ? "ask_peer" : names.includes("site_lookup") ? "site_lookup" : "";
+      if (tool) {
+        const args = tool === "ask_peer" ? { text: "What does seed coverage cost?" } : { query: "seed cost" };
+        return Response.json({
+          choices: [
+            {
+              message: {
+                content: tool === "ask_peer" ? "Asking the Corgi agent." : "Looking up the site.",
+                tool_calls: [{ id: "c1", function: { name: tool, arguments: JSON.stringify(args) } }],
+              },
+            },
+          ],
+        });
+      }
+      return Response.json({ choices: [{ message: { content: "No tool is bound." } }] });
+    },
+  });
+  return {
+    url: String(server.url),
+    get calls() {
+      return calls;
+    },
+    stop: () => server.stop(true),
+  };
+}

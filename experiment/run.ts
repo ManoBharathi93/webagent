@@ -1,12 +1,14 @@
 #!/usr/bin/env bun
 /**
  * Two public agents. Seller is the crawled site. Buyer talks to seller as a machine.
- * Prefer Cursor SDK. If CURSOR_API_KEY is missing, use the script model.
+ * auto: cursor, then openrouter, then ollama, then script.
+ * live: same order, fail closed if no real LLM is ready.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { cursorModel, type CursorCall } from "../src/cursor.ts";
 import { Harness } from "../src/harness.ts";
 import { listen, type Hop } from "../src/host/listen.ts";
+import { ollamaModel, openaiModel, probeOllama, type ModelCall } from "../src/models.ts";
 import { attachSales } from "../src/sales/index.ts";
 import { siteBook } from "../src/site/index.ts";
 import type { SitePack } from "../src/site/types.ts";
@@ -38,6 +40,8 @@ if (import.meta.main) {
   }
 }
 
+export type PairModel = "auto" | "live" | "cursor" | "openrouter" | "ollama" | "script";
+
 export interface PairOpts {
   site: string;
   maxPages: number;
@@ -45,23 +49,36 @@ export interface PairOpts {
   buyerPort: number;
   out: string;
   keep: boolean;
-  model: "auto" | "cursor" | "script";
+  model: PairModel;
 }
 
 export async function runPair(opts: PairOpts) {
   const hops: Hop[] = [];
   const crawl: { url: string; status: number; ms: number }[] = [];
   const cursorCalls: CursorCall[] = [];
+  const modelCalls: ModelCall[] = [];
+  const onCall = (c: ModelCall) => modelCalls.push(c);
 
   const sellerH = new Harness();
   const buyerH = new Harness();
   const cursor = cursorModel({ onCall: (c) => cursorCalls.push(c) });
+  const openrouter = addOpenrouter(onCall);
+  const ollamaUp = await probeOllama();
+  const ollama = ollamaModel({ ready: ollamaUp, onCall });
   sellerH.addModel(cursor);
-  buyerH.addModel(cursorModel({ onCall: (c) => cursorCalls.push(c) }));
+  sellerH.addModel(openrouter);
+  sellerH.addModel(ollama);
   sellerH.addModel(scriptModel({ id: "script", role: "seller" }));
+  buyerH.addModel(cursorModel({ onCall: (c) => cursorCalls.push(c) }));
+  buyerH.addModel(addOpenrouter(onCall));
+  buyerH.addModel(ollamaModel({ ready: ollamaUp, onCall }));
   buyerH.addModel(scriptModel({ id: "script", role: "buyer" }));
 
-  const want = pickModel(opts.model, cursor.ready !== false);
+  const want = pickModel(opts.model, {
+    cursor: cursor.ready !== false,
+    openrouter: openrouter.ready !== false,
+    ollama: ollamaUp,
+  });
   const t0 = Date.now();
   const job = await siteBook(sellerH).ingest(opts.site, {
     maxPages: opts.maxPages,
@@ -91,8 +108,8 @@ export async function runPair(opts: PairOpts) {
     model: want,
     instruction: [
       "You are a founder who wants startup insurance.",
-      "The Corgi public agent is a peer. Use ask_peer to ask it.",
-      "Then give a short answer to the human. Quote the peer. Do not invent prices.",
+      "The Corgi public agent is a peer. You must call ask_peer with the human question before you answer.",
+      "After the tool returns, give a short answer to the human. Quote the peer. Do not invent prices.",
     ].join(" "),
     tools: [peerTool(seller.url, (h) => hops.push({ ...h, path: "peer:" + h.path } as Hop))],
   });
@@ -130,7 +147,16 @@ export async function runPair(opts: PairOpts) {
   const report = {
     startedAt: new Date().toISOString(),
     site: opts.site,
-    model: { wanted: opts.model, used: want, cursorReady: cursor.ready !== false, cursorReason: cursor.reasonNotReady },
+    model: {
+      wanted: opts.model,
+      used: want,
+      cursorReady: cursor.ready !== false,
+      cursorReason: cursor.reasonNotReady,
+      openrouterReady: openrouter.ready !== false,
+      openrouterReason: openrouter.reasonNotReady,
+      ollamaReady: ollamaUp,
+      ollamaReason: ollama.reasonNotReady,
+    },
     crawl: {
       ms: crawlMs,
       origin: pack.origin,
@@ -164,6 +190,7 @@ export async function runPair(opts: PairOpts) {
     turns,
     hops,
     cursorCalls,
+    modelCalls,
     analysis: analyze(pack, turns, hops, crawl, want),
   };
   return report;
@@ -177,10 +204,31 @@ interface TurnRec {
   seller: string;
 }
 
-function pickModel(want: PairOpts["model"], cursorReady: boolean): string {
-  if (want === "script") return "script";
-  if (want === "cursor") return "cursor";
-  return cursorReady ? "cursor" : "script";
+export interface ModelReady {
+  cursor: boolean;
+  openrouter: boolean;
+  ollama: boolean;
+}
+
+const LIVE = ["cursor", "openrouter", "ollama"] as const;
+
+/** Pick a bound model. live fails closed when no real LLM is ready. */
+export function pickModel(want: PairModel, ready: ModelReady): string {
+  if (want === "script" || want === "cursor" || want === "openrouter" || want === "ollama") return want;
+  const first = LIVE.find((id) => ready[id]);
+  if (first) return first;
+  if (want === "live") throw new Error("no live model is ready (cursor, openrouter, or ollama)");
+  return "script";
+}
+
+function addOpenrouter(onCall: (c: ModelCall) => void) {
+  return openaiModel({
+    id: "openrouter",
+    baseUrl: "https://openrouter.ai/api/v1",
+    model: process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini",
+    apiKeyEnv: "OPENROUTER_API_KEY",
+    onCall,
+  });
 }
 
 function lastAssistant(msgs: readonly { role: string; content: string }[]): string {
@@ -235,9 +283,9 @@ function analyze(pack: SitePack, turns: TurnRec[], hops: Hop[], crawl: { url: st
       "Seller answers only from the crawled pack plus site_lookup.",
       "Buyer is a separate harness and a separate listen port.",
       "Buyer calls seller over HTTP as a machine (x-agent + JSON).",
-      model === "cursor"
-        ? "Both runs bound cursor (Cursor SDK Agent.prompt, tools empty)."
-        : "CURSOR_API_KEY was missing. Both runs bound the script model so the pair still ran.",
+      LIVE.includes(model as (typeof LIVE)[number])
+        ? "Both runs bound a live LLM. Buyer and seller are separate harnesses."
+        : "No live LLM was ready. Both runs bound the script model so the pair still ran.",
     ],
   };
 }
@@ -253,6 +301,8 @@ export function asMarkdown(r: Awaited<ReturnType<typeof runPair>>): string {
     "- wanted: `" + r.model.wanted + "`",
     "- used: `" + r.model.used + "`",
     "- cursor ready: " + r.model.cursorReady + (r.model.cursorReason ? " (" + r.model.cursorReason + ")" : ""),
+    "- openrouter ready: " + r.model.openrouterReady + (r.model.openrouterReason ? " (" + r.model.openrouterReason + ")" : ""),
+    "- ollama ready: " + r.model.ollamaReady + (r.model.ollamaReason ? " (" + r.model.ollamaReason + ")" : ""),
     "",
     "## Site ingest",
     "",
@@ -312,6 +362,14 @@ export function asMarkdown(r: Awaited<ReturnType<typeof runPair>>): string {
       lines.push("- " + c.ms + "ms" + (c.error ? " error: " + c.error : "") + (c.usage ? " tokens=" + JSON.stringify(c.usage) : ""));
     }
   }
+  if (r.modelCalls.length) {
+    lines.push("");
+    lines.push("## Live model calls");
+    lines.push("");
+    for (const c of r.modelCalls) {
+      lines.push("- `" + c.id + "` " + c.ms + "ms" + (c.error ? " error: " + c.error : "") + (c.text ? " " + c.text.slice(0, 80).replace(/\n/g, " ") : ""));
+    }
+  }
   lines.push("");
   lines.push("## Analysis");
   lines.push("");
@@ -331,7 +389,7 @@ function parseArgs(argv: string[]): PairOpts {
     buyerPort: 0,
     out: "experiment/last-report.json",
     keep: false,
-    model: "auto",
+    model: "live",
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
@@ -341,7 +399,7 @@ function parseArgs(argv: string[]): PairOpts {
     else if (a === "--buyer-port") out.buyerPort = Number(argv[++i]) || 0;
     else if (a === "--out") out.out = argv[++i] ?? out.out;
     else if (a === "--keep") out.keep = true;
-    else if (a === "--model") out.model = (argv[++i] as PairOpts["model"]) || "auto";
+    else if (a === "--model") out.model = (argv[++i] as PairModel) || "live";
     else if (!a.startsWith("-") && a.includes("://")) out.site = a;
   }
   return out;

@@ -1,5 +1,5 @@
 import { cursorModel } from "./cursor.ts";
-import { echoModel, ModelShelf, openaiModel, type Model, type ModelInfo } from "./models.ts";
+import { echoModel, ModelShelf, ollamaModel, openaiModel, type Model, type ModelInfo } from "./models.ts";
 import { Run, type CreateOpts, type Explain } from "./run.ts";
 import { Scheduler } from "./scheduler.ts";
 import { STATE_NAME, type RunState } from "./state.ts";
@@ -114,6 +114,7 @@ export function defaultHarness(): Harness {
       }),
     );
   }
+  h.addModel(ollamaModel());
   return h;
 }
 
