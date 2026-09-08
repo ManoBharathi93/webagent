@@ -18,7 +18,7 @@ const LIVE = ["cursor", "openai", "openrouter", "ollama", "mock"] as const;
 
 const TURNS = [
   "Hi. I need insurance for my startup.",
-  "I am Maya Chen, founder of Northline. We sell B2B analytics to other software teams. Seed stage.",
+  "I am Maya Chen, founder of Northline. We are a seed-stage SaaS company. We sell B2B analytics to other software teams.",
   "Our biggest worry is a customer data breach and a product outage. What should we buy, what does it cost, and should we use Corgi or a broker?",
 ];
 
@@ -119,7 +119,8 @@ export async function runPair(opts: PairOpts) {
   sellerRun.inject({
     vars: [
       "Interview first. Ask for company name and founder name if they are missing.",
-      "Do not write a pinpoint report until you have company, founder, field, and what they do.",
+      "If they already named the company, the founder, the field or what they sell, infer the rest and write the report.",
+      "If they ask what to buy or what it costs, write the pinpoint report. Do not ask another discovery question.",
       "Then call note_visitor, site_lookup on the local files, and map_risks.",
       "Use only the customer name the tool returns.",
       "Do not invent Shopify or any other name.",
