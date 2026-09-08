@@ -52,6 +52,10 @@ switch (args[0]) {
   case "pair": {
     const url = args.find((a) => a.includes("://")) || args[1] || "https://www.corgi.insure";
     const modelFlag = args.includes("--model") ? args[args.indexOf("--model") + 1] : "live";
+    if (modelFlag === "script") {
+      console.error("script model is removed. Use a live LLM.");
+      process.exit(2);
+    }
     const { runPair, asMarkdown } = await import("../experiment/run.ts");
     const report = await runPair({
       site: url.startsWith("-") ? "https://www.corgi.insure" : url,
@@ -60,7 +64,7 @@ switch (args[0]) {
       buyerPort: 8788,
       out: "experiment/last-report.json",
       keep: args.includes("--keep"),
-      model: (modelFlag as "auto" | "live" | "cursor" | "openrouter" | "ollama" | "script") || "live",
+      model: (modelFlag as "auto" | "live" | "cursor" | "openrouter" | "ollama" | "openai") || "live",
     });
     console.log(asMarkdown(report));
     if (!args.includes("--keep")) {

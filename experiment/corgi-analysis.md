@@ -5,7 +5,7 @@ Run: 2026-09-08T00:43:37Z
 Branch: `cursor/live-pair-llms-e5be`  
 Model: **ollama** `qwen2.5:7b` on both hosts (no Cursor key, no OpenRouter key)
 
-This is not the script relay. Each reason step is a real chat completion. Buyer and seller are separate harnesses.
+Each reason step is a real chat completion. Buyer and seller are separate harnesses. There is no script model.
 
 ```
 human ──POST /chat──► buyer (ollama)
@@ -60,14 +60,14 @@ Buyer called `ask_peer` a third time. Seller compared speed and ease and kept th
 | 32390 | seller | Corgi vs broker |
 | 10639 | buyer | recommendation |
 
-## What a real LLM did that the script did not
+## What the live models did
 
-- Buyer **composed** a founder answer. It did not prefix `Corgi agent said:` and dump snippets.
+- Buyer **composed** a founder answer after `ask_peer`.
 - Seller used the sales report shape from the GEPA instruction.
-- Turn times are seconds, not 1–5 ms.
-- The model also **drifted**: seller skipped `map_risks` / `site_lookup`, invented Stripe, and invented a $1M limit. The script never did that because it only relayed tool JSON.
+- Turn times are tens of seconds (real completions).
+- The 7B seller also **drifted**: it skipped `map_risks` / `site_lookup`, invented Stripe, and invented a $1M limit.
 
-`--model live` fails closed when no real LLM is ready. `--model auto` still falls back to `script` for CI.
+`--model live` and `--model auto` fail closed when no real LLM is ready.
 
 ## Replay
 

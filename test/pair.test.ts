@@ -41,6 +41,7 @@ function html(title: string, body: string) {
 describe("pair experiment", () => {
   test("two hosts, buyer asks seller, hops are recorded", async () => {
     const site = mockSite();
+    const llm = mockLlm();
     try {
       const report = await runPair({
         site: String(site.url),
@@ -49,13 +50,14 @@ describe("pair experiment", () => {
         buyerPort: 0,
         out: "experiment/last-report.json",
         keep: false,
-        model: "script",
+        model: "openai",
+        liveUrl: llm.url + "v1",
       });
       try {
         expect(report.seller.url).toMatch(/^http/);
         expect(report.buyer.url).toMatch(/^http/);
         expect(report.seller.runId).not.toBe(report.buyer.runId);
-        expect(report.model.used).toBe("script");
+        expect(report.model.used).toBe("openai");
         expect(report.crawl.pages).toBeGreaterThan(0);
         expect(report.turns.length).toBe(3);
         expect(report.turns[0]!.buyer.length).toBeGreaterThan(0);
@@ -70,18 +72,21 @@ describe("pair experiment", () => {
         report.buyer.stop();
       }
     } finally {
+      llm.stop();
       site.stop(true);
     }
   }, 30000);
 
-  test("auto picks a live LLM before script; live fails closed", () => {
+  test("auto and live fail closed when no LLM is ready", () => {
     const all = { cursor: true, openrouter: true, ollama: true };
     expect(pickModel("auto", all)).toBe("cursor");
     expect(pickModel("auto", { cursor: false, openrouter: true, ollama: true })).toBe("openrouter");
     expect(pickModel("auto", { cursor: false, openrouter: false, ollama: true })).toBe("ollama");
-    expect(pickModel("auto", { cursor: false, openrouter: false, ollama: false })).toBe("script");
+    expect(pickModel("auto", { cursor: false, openrouter: false, ollama: false, openai: true })).toBe("openai");
     expect(pickModel("live", { cursor: false, openrouter: false, ollama: true })).toBe("ollama");
+    expect(pickModel("openai", { cursor: false, openrouter: false, ollama: true, openai: true })).toBe("openai");
     expect(pickModel("openrouter", all)).toBe("openrouter");
+    expect(() => pickModel("auto", { cursor: false, openrouter: false, ollama: false })).toThrow(/no live model/);
     expect(() => pickModel("live", { cursor: false, openrouter: false, ollama: false })).toThrow(/no live model/);
   });
 
@@ -164,18 +169,31 @@ function mockLlm() {
       const names = (body.tools ?? []).map((t) => t.function?.name ?? "");
       if (last?.role === "tool") {
         const raw = String(last.content ?? "");
-        return Response.json({
-          choices: [{ message: { content: raw.includes("$2000") ? "Corgi agent said seed packages start at $2000." : raw.slice(0, 240) } }],
-        });
+        const text =
+          /\$2,?000|Seed|quote|minutes/i.test(raw)
+            ? "Seed packages start at $2000. Quotes in minutes."
+            : raw.slice(0, 240);
+        return Response.json({ choices: [{ message: { content: text } }] });
       }
-      const tool = names.includes("ask_peer") ? "ask_peer" : names.includes("site_lookup") ? "site_lookup" : "";
+      const tool = names.includes("ask_peer")
+        ? "ask_peer"
+        : names.includes("map_risks")
+          ? "map_risks"
+          : names.includes("site_lookup")
+            ? "site_lookup"
+            : "";
       if (tool) {
-        const args = tool === "ask_peer" ? { text: "What does seed coverage cost?" } : { query: "seed cost" };
+        const args =
+          tool === "ask_peer"
+            ? { text: "What does seed coverage cost?" }
+            : tool === "map_risks"
+              ? { category: "SaaS", does: "seed-stage SaaS founder" }
+              : { query: "seed cost" };
         return Response.json({
           choices: [
             {
               message: {
-                content: tool === "ask_peer" ? "Asking the Corgi agent." : "Looking up the site.",
+                content: tool === "ask_peer" ? "Asking the Corgi agent." : "Looking up coverage.",
                 tool_calls: [{ id: "c1", function: { name: tool, arguments: JSON.stringify(args) } }],
               },
             },

@@ -154,7 +154,7 @@ The pack has `flows`, `facts`, `instruction`, and `starterQuestions` for the pub
 | `bun src/cli.ts ask <text>` | One `echo` run |
 | `bun src/cli.ts serve [addr]` | Host the public agent (default `:8787`) |
 | `bun src/cli.ts ingest <url>` | Crawl a site, build flows, attach a run |
-| `bun src/cli.ts pair <url>` | Two hosts: site seller + buyer. Live LLM (`cursor`, `openrouter`, or `ollama`). Script only with `--model script` |
+| `bun src/cli.ts pair <url>` | Two hosts: site seller + buyer. Live LLM required (`cursor`, `openrouter`, or `ollama`) |
 | `bun src/cli.ts help` | Usage |
 
 `serve` binds [`listen`](src/host/listen.ts). Browsers get a chat page. Machines get `/mcp` and `/agent.json`. Both use the same run.
@@ -386,7 +386,7 @@ bun experiment/run.ts --site https://www.corgi.insure --model live
 
 Writes `experiment/last-report.json` and `.md` (gitignored): crawl hops, both agent cards, each turn’s seller and buyer text, HTTP hops (human vs machine), live model calls.
 
-`--model auto` still falls back to `script` for CI. `--model live` does not. Choosing a model is a `useModel` control. The loop does not change.
+`--model auto` and `--model live` pick the first ready live LLM. Both fail closed if none is ready. There is no script model. Choosing a model is a `useModel` control. The loop does not change.
 
 Readme of that thread: [CONVERSATION.md](CONVERSATION.md). Live numbers: [experiment/corgi-analysis.md](experiment/corgi-analysis.md).
 
