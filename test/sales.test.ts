@@ -78,6 +78,12 @@ describe("attachSales", () => {
     expect(run.listTools().some((t) => t.name === "map_risks")).toBe(true);
     expect(run.listTools().some((t) => t.name === "note_visitor")).toBe(true);
     expect(salesInstruction(pack)).toContain("map_risks");
+    const visitor = run.tools.find((t) => t.name === "note_visitor")!;
+    const before = run.getContext().length;
+    const saved = await visitor.call({ company: "Northline", founder: "Maya Chen", field: "SaaS", does: "B2B analytics", stage: "seed" });
+    expect(JSON.stringify(saved)).toMatch(/Northline|Maya Chen/);
+    expect(run.getContext().length).toBe(before);
+    expect(run.getContext().every((m) => m.role !== "pin" || !/Visitor note/.test(m.content))).toBe(true);
   });
 });
 

@@ -69,17 +69,20 @@ export function visitorTool(run: Run): Tool {
         does: String(args.does ?? "").trim(),
         stage: String(args.stage ?? "").trim(),
       };
-      run.inject({
-        vars: [
-          "Visitor note:",
-          "Company: " + (note.company || "(missing)"),
-          "Founder: " + (note.founder || "(missing)"),
-          "Field: " + (note.field || "(missing)"),
-          "Does: " + (note.does || "(missing)"),
-          "Stage: " + (note.stage || "(missing)"),
-        ].join("\n"),
-      });
-      return { saved: true, ...note };
+      // Do not inject a pin here. A pin between tool_calls and tool results breaks OpenAI.
+      void run;
+      return {
+        saved: true,
+        ...note,
+        recap:
+          (note.founder || "Founder") +
+          " at " +
+          (note.company || "(company)") +
+          " · " +
+          (note.field || "(field)") +
+          (note.stage ? " · " + note.stage : "") +
+          (note.does ? " — " + note.does : ""),
+      };
     },
   };
 }
