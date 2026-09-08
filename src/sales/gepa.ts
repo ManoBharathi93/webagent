@@ -10,6 +10,9 @@ export interface GoalScore {
   report: number;
   grounded: number;
   short: number;
+  cover: number;
+  readme: number;
+  teach: number;
 }
 
 export interface PromptCand {
@@ -28,6 +31,9 @@ const GOALS: (keyof GoalScore)[] = [
   "report",
   "grounded",
   "short",
+  "cover",
+  "readme",
+  "teach",
 ];
 
 export function scorePrompt(text: string): GoalScore {
@@ -40,6 +46,9 @@ export function scorePrompt(text: string): GoalScore {
     report: hit(t, [/pinpoint report|for you:/, /best fit:/, /do this next/, /founder|company/]),
     grounded: hit(t, [/do not invent|from the pack|from the files|only from/, /no (fake|invented) (price|customer|lawsuit)/]),
     short: hit(t, [/180 words|short/, /no tool (names|json)/, /one link/]),
+    cover: hit(t, [/liabilit/, /how much we cover|limit|\$1m|per claim/, /cgl|tech e&o|cyber/]),
+    readme: hit(t, [/# for |readme|short read/, /personal/, /what can go wrong|what pays/]),
+    teach: hit(t, [/situation|problem|implication|need-payoff/, /insight|reframe|challenger|spin/, /simple|snap|one link/]),
   };
 }
 
@@ -96,6 +105,9 @@ function reflect(cands: PromptCand[]): { id: string; text: string }[] {
       if (g === "social") return "Name one similar company with that problem, or a competitor-category customer already using Corgi. Pack only.";
       if (g === "report") return "Reply with one short pinpoint report: For you / Risks / If you skip insurance / Who / Best fit / Do this next.";
       if (g === "grounded") return "Do not invent prices, customers, lawsuits, or penalties. If the pack has no match, say so.";
+      if (g === "cover") return "For each product, name one liability case and how much we cover (site limits, often $1M per claim). CGL, D&O, Tech E&O, Cyber.";
+      if (g === "readme") return "Write the reply as a brief personal readme: # For {founder} — {company}. What can go wrong and what pays. Short read they can share.";
+      if (g === "teach") return "Use SPIN (situation, problem, implication, need-payoff). Teach one Challenger insight. Keep it SNAP: simple, one link.";
       return "Keep the whole report under 180 words. No tool names. No JSON. One link.";
     })
     .join("\n");

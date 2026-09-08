@@ -9,6 +9,12 @@ export interface RiskAsk {
   stage?: string;
 }
 
+export interface CoverNote {
+  line: string;
+  case: string;
+  limit: string;
+}
+
 export interface RiskNote {
   category: string;
   does: string;
@@ -20,9 +26,34 @@ export interface RiskNote {
   proof: { kind: "customer" | "story" | "none"; name: string; why: string };
   offer: string;
   lines: string[];
+  covers: CoverNote[];
   costBand: string;
   next: { label: string; url: string };
 }
+
+const LIMIT_CLAIM = "up to $1M per claim / $2M aggregate";
+const LIMIT_CGL = "up to $1M per occurrence / $2M aggregate";
+
+const CORE_COVERS: CoverNote[] = [
+  { line: "Tech E&O", case: "Your product is down or gives bad advice and a customer sues", limit: LIMIT_CLAIM },
+  { line: "Cyber", case: "Customer data leaks and they sue you", limit: LIMIT_CLAIM },
+  { line: "D&O", case: "A board or investor sues over a deal or fundraise", limit: LIMIT_CLAIM },
+  { line: "CGL", case: "Someone is hurt at your office or an event", limit: LIMIT_CGL },
+];
+
+const AI_COVERS: CoverNote[] = [
+  { line: "Tech E&O", case: "A model or agent output harms a customer", limit: LIMIT_CLAIM },
+  { line: "Cyber", case: "Training data or customer data leaks", limit: LIMIT_CLAIM },
+  { line: "D&O", case: "A board or investor sues over an AI miss", limit: LIMIT_CLAIM },
+  { line: "CGL", case: "Someone is hurt at your office or an event", limit: LIMIT_CGL },
+];
+
+const FINTECH_COVERS: CoverNote[] = [
+  { line: "Cyber", case: "A funds or data event, then a vendor or customer claim", limit: LIMIT_CLAIM },
+  { line: "Tech E&O", case: "A payments or workflow miss costs a partner money", limit: LIMIT_CLAIM },
+  { line: "D&O", case: "A partner or investor alleges a miss", limit: LIMIT_CLAIM },
+  { line: "CGL", case: "Someone is hurt at your office or an event", limit: LIMIT_CGL },
+];
 
 const DEMO = "https://www.corgi.insure/book-a-demo";
 const QUOTE = "https://app.corgi.insure/quote/package-selection";
@@ -47,6 +78,7 @@ const ROWS: { match: RegExp; note: Omit<RiskNote, "category" | "does" | "company
       },
       offer: "Seed or Series A stack plus AI-aware E&O / cyber",
       lines: ["CGL", "D&O", "Tech E&O", "Cyber", "AI liability if listed"],
+      covers: AI_COVERS,
       costBand: "Site cost-by-stage: about $2k–$4k early; $10k–$25k as you add EPLI / more D&O. Not a bind.",
       next: { label: "Book a demo", url: DEMO },
     },
@@ -70,6 +102,7 @@ const ROWS: { match: RegExp; note: Omit<RiskNote, "category" | "does" | "company
       },
       offer: "Pre-seed & Seed package",
       lines: ["CGL", "D&O", "Tech E&O", "Cyber"],
+      covers: CORE_COVERS,
       costBand: "Site cost-by-stage: about $2,000–$4,000 / year for ~$1M core limits on an eligible early startup.",
       next: { label: "Open the quote app", url: QUOTE },
     },
@@ -93,6 +126,7 @@ const ROWS: { match: RegExp; note: Omit<RiskNote, "category" | "does" | "company
       },
       offer: "Seed or Series A stack, cyber-heavy",
       lines: ["CGL", "D&O", "Tech E&O", "Cyber"],
+      covers: FINTECH_COVERS,
       costBand: "Use the site cost-by-stage bands. Do not invent a fintech surcharge.",
       next: { label: "Book a demo", url: DEMO },
     },
@@ -109,6 +143,12 @@ const ROWS: { match: RegExp; note: Omit<RiskNote, "category" | "does" | "company
       },
       offer: "Custom / growth-aware stack",
       lines: ["CGL", "D&O", "Cyber", "Crime if discussed on-site"],
+      covers: [
+        { line: "Cyber", case: "Key, protocol, or customer data loss", limit: LIMIT_CLAIM },
+        { line: "D&O", case: "An investor claim if an asset path fails", limit: LIMIT_CLAIM },
+        { line: "CGL", case: "Someone is hurt at your office or an event", limit: LIMIT_CGL },
+        { line: "Crime", case: "Theft of funds or keys, if the site lists crime for this stack", limit: "site band only; confirm on a quote" },
+      ],
       costBand: "Site gives stage bands only. Say if crypto-specific price is not on the page.",
       next: { label: "Book a demo", url: DEMO },
     },
@@ -125,6 +165,12 @@ const ROWS: { match: RegExp; note: Omit<RiskNote, "category" | "does" | "company
       },
       offer: "Seed stack + cyber emphasis",
       lines: ["CGL", "D&O", "Tech E&O", "Cyber"],
+      covers: [
+        { line: "Cyber", case: "PHI or patient data leaks", limit: LIMIT_CLAIM },
+        { line: "Tech E&O", case: "A workflow miss harms a clinic or patient process", limit: LIMIT_CLAIM },
+        { line: "D&O", case: "A board or payor packet fight", limit: LIMIT_CLAIM },
+        { line: "CGL", case: "Someone is hurt at your office or an event", limit: LIMIT_CGL },
+      ],
       costBand: "Site cost-by-stage bands. No invented clinical premium.",
       next: { label: "Book a demo", url: DEMO },
     },
@@ -148,6 +194,7 @@ const FALLBACK: Omit<RiskNote, "category" | "does" | "company" | "founder" | "st
   },
   offer: "Pre-seed & Seed core package",
   lines: ["CGL", "D&O", "Tech E&O", "Cyber"],
+  covers: CORE_COVERS,
   costBand: "Site cost-by-stage: about $2k–$4k early. Confirm on a quote.",
   next: { label: "Get insured / demo", url: DEMO },
 };
@@ -168,23 +215,38 @@ export function mapRisks(ask: RiskAsk): RiskNote {
 }
 
 export function reportText(note: RiskNote): string {
+  const who =
+    note.founder && note.company
+      ? note.founder + " — " + note.company
+      : note.company || note.founder || "your startup";
+  const sell = note.does || "this product";
+  const tag = [note.category, note.stage].filter(Boolean).join(", ");
   const proof =
     note.proof.kind === "none"
       ? "No close match on the crawled pages."
-      : `${note.proof.name} — ${note.proof.why}`;
-  const who = [note.founder, note.company].filter(Boolean).join(" at ");
-  const label = [who, note.does || "(what you build)", note.category || "(category)", note.stage]
-    .filter(Boolean)
-    .join(" · ");
+      : note.proof.name + " — " + note.proof.why;
+  const covers = (note.covers ?? CORE_COVERS).slice(0, 4);
   return [
-    `**For you:** ${label}`,
-    `**Risks:**`,
-    ...note.risks.slice(0, 3).map((r) => `- ${r}`),
-    `**If you skip insurance:**`,
-    ...note.penalties.slice(0, 2).map((r) => `- ${r}`),
-    `**Who:** ${proof}`,
-    `**Best fit:** ${note.offer} (${note.lines.join(", ")})`,
-    `**Cost band (site, not a bind):** ${note.costBand}`,
-    `**Do this next:** ${note.next.label} — ${note.next.url}`,
+    "# For " + who,
+    "",
+    "You sell " + sell + (tag ? " (" + tag + ")" : "") + ". This is your short read.",
+    "",
+    "The first enterprise buyer will ask for a COI before they care about the product.",
+    "",
+    "## What can go wrong — and what pays",
+    ...covers.map((c) => "- " + c.case + " → **" + c.line + "**, typically " + c.limit + "."),
+    "",
+    "## Best fit",
+    note.offer + ": " + note.lines.join(", ") + ".",
+    note.costBand,
+    "",
+    "## If you skip insurance",
+    ...note.penalties.slice(0, 2).map((r) => "- " + r),
+    "",
+    "## Who already did this",
+    proof,
+    "",
+    "## Next",
+    note.next.label + " — " + note.next.url,
   ].join("\n");
 }

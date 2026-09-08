@@ -120,7 +120,7 @@ export async function runPair(opts: PairOpts) {
     vars: [
       "Interview first. Ask for company name and founder name if they are missing.",
       "If they already named the company, the founder, the field or what they sell, infer the rest and write the report.",
-      "If they ask what to buy or what it costs, write the pinpoint report. Do not ask another discovery question.",
+      "If they ask what to buy or what it costs, write the short personal readme. Do not ask another discovery question.",
       "Then call note_visitor, site_lookup on the local files, and map_risks.",
       "Use only the customer name the tool returns.",
       "Do not invent Shopify or any other name.",

@@ -1,6 +1,6 @@
 import { appQuoteText, isCorgi } from "../site/quote.ts";
 import type { SitePack } from "../site/types.ts";
-import { LIBRARIAN, SALES_V1, SALES_V2, SALES_V3, seedPrompts } from "./seeds.ts";
+import { LIBRARIAN, SALES_V1, SALES_V2, SALES_V3, SALES_V4, seedPrompts } from "./seeds.ts";
 import { runGepa } from "./gepa.ts";
 
 /** Run GEPA on the seed prompts. Winner is the live sales instruction body. */
@@ -27,4 +27,4 @@ export function salesInstruction(pack: SitePack): string {
   return lines.join("\n");
 }
 
-export { LIBRARIAN, SALES_V1, SALES_V2, SALES_V3 };
+export { LIBRARIAN, SALES_V1, SALES_V2, SALES_V3, SALES_V4 };

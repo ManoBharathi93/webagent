@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { onFront, runGepa, scorePrompt } from "../src/sales/gepa.ts";
-import { LIBRARIAN, SALES_V2, SALES_V3, seedPrompts } from "../src/sales/seeds.ts";
+import { LIBRARIAN, SALES_V2, SALES_V3, SALES_V4, seedPrompts } from "../src/sales/seeds.ts";
 import { SALES_PROMPT_ID, SALES_PROMPT_MEAN, salesInstruction } from "../src/sales/prompt.ts";
 import { mapRisks, reportText } from "../src/sales/risks.ts";
 import { attachSales } from "../src/sales/attach.ts";
@@ -26,6 +26,17 @@ describe("gepa on sales prompt", () => {
     expect(SALES_V3).toMatch(/note_visitor/);
   });
 
+  test("sales-v4 beats v3 on cover, readme, and teach", () => {
+    const v3 = scorePrompt(SALES_V3);
+    const v4 = scorePrompt(SALES_V4);
+    expect(v4.cover).toBeGreaterThan(v3.cover);
+    expect(v4.readme).toBeGreaterThan(v3.readme);
+    expect(v4.teach).toBeGreaterThan(v3.teach);
+    expect(v4.discover).toBe(1);
+    expect(SALES_V4).toMatch(/SPIN|need-payoff|Challenger|SNAP/i);
+    expect(SALES_V4).toMatch(/how much we cover|\$1M per claim/i);
+  });
+
   test("GEPA winner is on the front and beats librarian mean", () => {
     const { winner, all, front } = runGepa(seedPrompts());
     expect(front.some((c) => c.id === winner.id)).toBe(true);
@@ -34,6 +45,9 @@ describe("gepa on sales prompt", () => {
     expect(SALES_PROMPT_MEAN).toBe(winner.mean);
     expect(SALES_PROMPT_ID.length).toBeGreaterThan(0);
     expect(winner.text).toMatch(/company name|founder name/i);
+    expect(winner.text).toMatch(/readme|# For /i);
+    expect(winner.id).toMatch(/sales-v4|m1|m2/);
+    expect(winner.mean).toBeGreaterThan(0.9);
   });
 
   test("a worse prompt is not on the Pareto front", () => {
@@ -50,12 +64,15 @@ describe("map_risks and report", () => {
     expect(note.penalties.length).toBeGreaterThan(0);
     expect(note.proof.name).toMatch(/Imagine AI/i);
     const text = reportText(note);
-    expect(text).toContain("**For you:**");
+    expect(text).toContain("# For Maya Chen — Northline");
     expect(text).toContain("Maya Chen");
     expect(text).toContain("Northline");
-    expect(text).toContain("**If you skip insurance:**");
-    expect(text).toContain("**Do this next:**");
-    expect(text.length).toBeLessThan(1800);
+    expect(text).toMatch(/What can go wrong/);
+    expect(text).toMatch(/\$1M/);
+    expect(text).toMatch(/If you skip insurance/);
+    expect(text).toMatch(/## Next/);
+    expect(note.covers.some((c) => /E&O|Cyber/i.test(c.line))).toBe(true);
+    expect(text.length).toBeLessThan(2200);
   });
 
   test("SaaS seed maps to Intryc and a seed stack", () => {

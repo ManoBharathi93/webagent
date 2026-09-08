@@ -25,3 +25,5 @@ bun experiment/run.ts --site https://www.corgi.insure --model live --corpus corp
 Flags: `--site` `--corpus` `--max-pages` `--seller-port` `--buyer-port` `--model` `--out` `--keep`.
 
 When `--site` is corgi.insure and `corpus/corgi` exists, the pair loads those files. It does not crawl or call Firecrawl.
+
+The seller closer is a short personal readme (`map_risks` → `reportText`). Sample: [northline-brief.md](northline-brief.md). GEPA table: [gepa/result.md](gepa/result.md).
