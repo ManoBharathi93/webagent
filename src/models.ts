@@ -83,6 +83,10 @@ export function echoModel(): Model {
   };
 }
 
+function defaultEffort(model: string): string | undefined {
+  return /^gpt-5(\.|-)/.test(model) ? "none" : undefined;
+}
+
 function lastUser(msgs: readonly Message[]): string {
   for (let i = msgs.length - 1; i >= 0; i--) {
     if (msgs[i]!.role === "user") return msgs[i]!.content;
@@ -106,6 +110,8 @@ export interface OpenAIOpts {
   /** Override ready. Use after a probe. */
   ready?: boolean;
   reasonNotReady?: string;
+  /** Chat Completions reasoning setting. GPT-5.6 needs `none` to use tools here. */
+  reasoningEffort?: string;
   onCall?: (call: ModelCall) => void;
 }
 
@@ -126,6 +132,8 @@ export function openaiModel(opts: OpenAIOpts): Model {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (key) headers.Authorization = "Bearer " + key;
       const body: Record<string, unknown> = { model: opts.model, messages: mapOpenAI(req.messages) };
+      const effort = opts.reasoningEffort ?? process.env.OPENAI_REASONING_EFFORT ?? defaultEffort(opts.model);
+      if (effort) body.reasoning_effort = effort;
       if (req.tools.length) {
         body.tools = req.tools.map((t) => ({
           type: "function",

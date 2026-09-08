@@ -46,6 +46,8 @@ describe("mapOpenAI", () => {
   });
 
   test("openaiModel sends mapped frames to a live endpoint", async () => {
+    const prev = process.env.OPENAI_REASONING_EFFORT;
+    delete process.env.OPENAI_REASONING_EFFORT;
     let seen: Record<string, unknown> | undefined;
     const server = Bun.serve({
       port: 0,
@@ -76,7 +78,39 @@ describe("mapOpenAI", () => {
       expect(out.toolCalls[0]?.name).toBe("lookup");
       const msgs = seen!.messages as { role: string }[];
       expect(msgs[0]!.role).toBe("system");
+      expect(seen!.reasoning_effort).toBeUndefined();
     } finally {
+      if (prev === undefined) delete process.env.OPENAI_REASONING_EFFORT;
+      else process.env.OPENAI_REASONING_EFFORT = prev;
+      server.stop(true);
+    }
+  });
+
+  test("gpt-5 chat completions send reasoning_effort none", async () => {
+    const prev = process.env.OPENAI_REASONING_EFFORT;
+    delete process.env.OPENAI_REASONING_EFFORT;
+    let seen: Record<string, unknown> | undefined;
+    const server = Bun.serve({
+      port: 0,
+      fetch: async (req) => {
+        seen = (await req.json()) as Record<string, unknown>;
+        return Response.json({ choices: [{ message: { content: "ok" } }] });
+      },
+    });
+    try {
+      const model = openaiModel({
+        id: "mock",
+        baseUrl: String(server.url).replace(/\/+$/, "") + "/v1",
+        model: "gpt-5.6-luna",
+        ready: true,
+      });
+      const a = new Assembler();
+      await model.reason({ messages: [{ role: "user", content: "hi" }], tools: [{ name: "lookup" }] }, a);
+      expect(seen!.reasoning_effort).toBe("none");
+      expect(seen!.model).toBe("gpt-5.6-luna");
+    } finally {
+      if (prev === undefined) delete process.env.OPENAI_REASONING_EFFORT;
+      else process.env.OPENAI_REASONING_EFFORT = prev;
       server.stop(true);
     }
   });
