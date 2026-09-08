@@ -2,7 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { Harness } from "../src/harness.ts";
 import { intake } from "../src/intake.ts";
 import { attachPack, isBlog, loadCorpus, lookupCorpus, saveCorpus, siteBook } from "../src/site/index.ts";
-import { mkdtempSync, rmSync } from "node:fs";
+import { APP_QUOTE_ID, addAppQuote, isCorgi } from "../src/site/quote.ts";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -173,6 +174,24 @@ describe("site ingest (on top of harness)", () => {
     }
   });
 
+  test("Corgi corpus includes the logged-in quote app products page", () => {
+    const pack = loadCorpus("corpus/corgi");
+    expect(pack.pages.some((p) => /app\.corgi\.insure\/quote\/products/.test(p.url))).toBe(true);
+    expect(pack.flows.some((f) => f.id === APP_QUOTE_ID)).toBe(true);
+    const hits = lookupCorpus("corpus/corgi", "quote products package-selection CGL D&O Tech E&O");
+    expect(hits.some((h) => /CGL|package-selection|products/i.test(h.snippet + h.title + h.url))).toBe(true);
+    expect(JSON.stringify(hits)).not.toMatch(/tejaskumar|gamil/i);
+  });
+
+  test("addAppQuote only attaches on a Corgi origin", () => {
+    expect(isCorgi("https://www.corgi.insure")).toBe(true);
+    expect(isCorgi("https://app.corgi.insure")).toBe(true);
+    expect(isCorgi("https://example.com")).toBe(false);
+    const added = addAppQuote([], "https://www.corgi.insure");
+    expect(added.some((f) => f.id === APP_QUOTE_ID)).toBe(true);
+    expect(addAppQuote([], "https://example.com")).toEqual([]);
+  });
+
   test("corpus save drops blog pages", () => {
     const dir = mkdtempSync(join(tmpdir(), "corgi-corpus-"));
     try {
@@ -200,6 +219,42 @@ describe("site ingest (on top of harness)", () => {
       const pack = loadCorpus(dir);
       expect(pack.pages.every((p) => !isBlog(p.url))).toBe(true);
       expect(pack.pages.some((p) => /saas/i.test(p.url))).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("saveCorpus keeps a hand-written quote products page", () => {
+    const dir = mkdtempSync(join(tmpdir(), "corgi-corpus-"));
+    try {
+      saveCorpus(dir, "https://www.corgi.insure", [
+        {
+          url: "https://www.corgi.insure/saas",
+          title: "SaaS",
+          description: "",
+          headings: [],
+          text: "SaaS coverage",
+          status: 200,
+        },
+      ]);
+      const keep = join(dir, "pages", "quote__products.md");
+      writeFileSync(
+        keep,
+        ["---", "url: https://app.corgi.insure/quote/products", "title: Quote app", "description: ", "status: 200", "---", "", "CGL D&O products", ""].join("\n"),
+      );
+      const n = saveCorpus(dir, "https://www.corgi.insure", [
+        {
+          url: "https://www.corgi.insure/saas",
+          title: "SaaS",
+          description: "",
+          headings: [],
+          text: "SaaS coverage",
+          status: 200,
+        },
+      ]);
+      expect(n).toBe(2);
+      const pack = loadCorpus(dir);
+      expect(pack.pages.some((p) => /quote\/products/.test(p.url))).toBe(true);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

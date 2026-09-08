@@ -47,6 +47,14 @@ export function saveCorpus(dir: string, origin: string, pages: CorpusPage[]): nu
     writeFileSync(join(pageDir, file), asMarkdown(p));
     index.pages.push({ url: p.url, title: p.title, file });
   }
+  const keepFile = "quote__products.md";
+  if (existsSync(join(pageDir, keepFile)) && !index.pages.some((p) => p.file === keepFile)) {
+    index.pages.push({
+      url: "https://app.corgi.insure/quote/products",
+      title: "Quote app product flow | Corgi",
+      file: keepFile,
+    });
+  }
   writeFileSync(join(dir, "index.json"), JSON.stringify(index, null, 2));
   writeFileSync(
     join(dir, "README.md"),
@@ -61,6 +69,9 @@ export function saveCorpus(dir: string, origin: string, pages: CorpusPage[]): nu
       "- Saved: " + index.savedAt,
       "",
       "Blog paths are omitted.",
+      index.pages.some((p) => p.file === "quote__products.md")
+        ? "The quote app product page is a logged-in walk of app.corgi.insure. It is not a Firecrawl scrape."
+        : "",
       "",
       "Lookup: `site_lookup` scores `pages/*.md` and returns snippets.",
     ].join("\n"),

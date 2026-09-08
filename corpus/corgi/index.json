@@ -212,6 +212,11 @@
       "url": "https://www.corgi.insure/market",
       "title": "Marketplace Startup Insurance | Corgi Insurance",
       "file": "market.md"
+    },
+    {
+      "url": "https://app.corgi.insure/quote/products",
+      "title": "Quote app product flow | Corgi",
+      "file": "quote__products.md"
     }
   ]
 }

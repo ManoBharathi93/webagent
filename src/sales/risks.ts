@@ -25,7 +25,7 @@ export interface RiskNote {
 }
 
 const DEMO = "https://www.corgi.insure/book-a-demo";
-const INSURE = "https://www.corgi.insure";
+const QUOTE = "https://app.corgi.insure/quote/package-selection";
 
 const ROWS: { match: RegExp; note: Omit<RiskNote, "category" | "does" | "company" | "founder" | "stage"> }[] = [
   {
@@ -71,7 +71,7 @@ const ROWS: { match: RegExp; note: Omit<RiskNote, "category" | "does" | "company
       offer: "Pre-seed & Seed package",
       lines: ["CGL", "D&O", "Tech E&O", "Cyber"],
       costBand: "Site cost-by-stage: about $2,000–$4,000 / year for ~$1M core limits on an eligible early startup.",
-      next: { label: "Get a quote path", url: INSURE },
+      next: { label: "Open the quote app", url: QUOTE },
     },
   },
   {

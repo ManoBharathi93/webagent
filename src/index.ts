@@ -21,6 +21,6 @@ export { STATE_NAME } from "./state.ts";
 export { guardTool } from "./policy.ts";
 export type { Tool } from "./tools.ts";
 export type { HookBag, Verdict } from "./hooks.ts";
-export { attachPack, siteBook, crawlSite, inferFlows, buildPack, loadCorpus, lookupCorpus, hasCorpus } from "./site/index.ts";
+export { attachPack, siteBook, crawlSite, inferFlows, buildPack, loadCorpus, lookupCorpus, hasCorpus, APP_QUOTE, addAppQuote, appQuoteText } from "./site/index.ts";
 export type { SitePack, SiteFlow, AuthAsk, AuthGrant } from "./site/index.ts";
 export { attachSales, salesInstruction, mapRisks, reportText, runGepa } from "./sales/index.ts";

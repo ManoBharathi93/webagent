@@ -63,6 +63,31 @@ describe("map_risks and report", () => {
     expect(note.offer).toMatch(/Seed/i);
     expect(note.proof.name).toMatch(/Intryc/i);
     expect(note.costBand).toMatch(/2,000|2k/i);
+    expect(note.next.url).toContain("package-selection");
+  });
+
+  test("sales instruction omits the app quote on a non-Corgi pack", () => {
+    const pack = buildPack({
+      origin: "https://example.com",
+      pages: [
+        {
+          url: "https://example.com/",
+          status: 200,
+          title: "Example",
+          description: "",
+          headings: [],
+          text: "Hello",
+          links: [],
+          forms: [],
+          gated: false,
+        },
+      ],
+      pending: [],
+      seen: new Set(),
+      cookies: "",
+    });
+    expect(pack.flows.every((f) => f.id !== "app_quote")).toBe(true);
+    expect(salesInstruction(pack)).not.toContain("package-selection");
   });
 });
 
@@ -78,6 +103,13 @@ describe("attachSales", () => {
     expect(run.listTools().some((t) => t.name === "map_risks")).toBe(true);
     expect(run.listTools().some((t) => t.name === "note_visitor")).toBe(true);
     expect(salesInstruction(pack)).toContain("map_risks");
+    expect(salesInstruction(pack)).toContain("package-selection");
+    expect(salesInstruction(pack)).toContain("app.corgi.insure");
+    expect(salesInstruction(pack)).toMatch(/CGL/);
+    expect(salesInstruction(pack)).toMatch(/Tech E&O/);
+    expect(salesInstruction(pack)).not.toMatch(/tejaskumar|gamil|555-1234/i);
+    expect(pack.flows.some((f) => f.id === "app_quote")).toBe(true);
+    expect(run.listTools().some((t) => t.name === "flow_app_quote")).toBe(true);
     const visitor = run.tools.find((t) => t.name === "note_visitor")!;
     const before = run.getContext().length;
     const saved = await visitor.call({ company: "Northline", founder: "Maya Chen", field: "SaaS", does: "B2B analytics", stage: "seed" });
