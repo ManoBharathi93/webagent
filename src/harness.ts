@@ -114,6 +114,14 @@ export function defaultHarness(): Harness {
       }),
     );
   }
+  h.addModel(
+    openaiModel({
+      id: "openai",
+      baseUrl: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
+      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+      apiKeyEnv: "OPENAI_API_KEY",
+    }),
+  );
   h.addModel(ollamaModel());
   return h;
 }

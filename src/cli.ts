@@ -64,7 +64,7 @@ switch (args[0]) {
       buyerPort: 8788,
       out: "experiment/last-report.json",
       keep: args.includes("--keep"),
-      model: (modelFlag as "auto" | "live" | "cursor" | "openrouter" | "ollama" | "openai") || "live",
+      model: (modelFlag as "auto" | "live" | "cursor" | "openai" | "openrouter" | "ollama" | "mock") || "live",
     });
     console.log(asMarkdown(report));
     if (!args.includes("--keep")) {

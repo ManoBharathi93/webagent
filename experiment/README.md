@@ -17,7 +17,7 @@ bun experiment/run.ts --site https://www.corgi.insure --model live
 
 | `--model` | Bind |
 | --- | --- |
-| `live` / `auto` | First ready of `cursor`, `openrouter`, `ollama`. Throw if none. |
-| `cursor` / `openrouter` / `ollama` | That id. Fail closed if it is not ready. |
+| `live` / `auto` | First ready of `cursor`, `openai`, `openrouter`, `ollama`. Throw if none. |
+| `cursor` / `openai` / `openrouter` / `ollama` | That id. Fail closed if it is not ready. |
 
 Flags: `--site` `--max-pages` `--seller-port` `--buyer-port` `--model` `--out` `--keep`.

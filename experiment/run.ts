@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * Two public agents. Seller is the crawled site. Buyer talks to seller as a machine.
- * auto and live: first ready of cursor, openrouter, ollama (or a test openai host).
+ * auto and live: first ready of cursor, openai, openrouter, ollama (or a test mock host).
  * Fail closed if no live LLM is ready. There is no script model.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -14,7 +14,7 @@ import { siteBook } from "../src/site/index.ts";
 import type { SitePack } from "../src/site/types.ts";
 import { peerTool } from "./peer.ts";
 
-const LIVE = ["cursor", "openrouter", "ollama", "openai"] as const;
+const LIVE = ["cursor", "openai", "openrouter", "ollama", "mock"] as const;
 
 const TURNS = [
   "I am a seed-stage SaaS founder. What coverage do I need and what does it cost?",
@@ -41,7 +41,7 @@ if (import.meta.main) {
   }
 }
 
-export type PairModel = "auto" | "live" | "cursor" | "openrouter" | "ollama" | "openai";
+export type PairModel = "auto" | "live" | "cursor" | "openai" | "openrouter" | "ollama" | "mock";
 
 export interface PairOpts {
   site: string;
@@ -51,7 +51,7 @@ export interface PairOpts {
   out: string;
   keep: boolean;
   model: PairModel;
-  /** Test only. OpenAI-compatible /v1 host. Bound as `openai`. */
+  /** Test only. OpenAI-compatible /v1 host. Bound as `mock`. */
   liveUrl?: string;
 }
 
@@ -65,26 +65,30 @@ export async function runPair(opts: PairOpts) {
   const sellerH = new Harness();
   const buyerH = new Harness();
   const cursor = cursorModel({ onCall: (c) => cursorCalls.push(c) });
+  const openai = addOpenAI(onCall);
   const openrouter = addOpenrouter(onCall);
   const ollamaUp = await probeOllama();
   const ollama = ollamaModel({ ready: ollamaUp, onCall });
   sellerH.addModel(cursor);
+  sellerH.addModel(openai);
   sellerH.addModel(openrouter);
   sellerH.addModel(ollama);
   buyerH.addModel(cursorModel({ onCall: (c) => cursorCalls.push(c) }));
+  buyerH.addModel(addOpenAI(onCall));
   buyerH.addModel(addOpenrouter(onCall));
   buyerH.addModel(ollamaModel({ ready: ollamaUp, onCall }));
   if (opts.liveUrl) {
     const base = opts.liveUrl.replace(/\/+$/, "");
-    sellerH.addModel(openaiModel({ id: "openai", baseUrl: base, model: "mock", ready: true, onCall }));
-    buyerH.addModel(openaiModel({ id: "openai", baseUrl: base, model: "mock", ready: true, onCall }));
+    sellerH.addModel(openaiModel({ id: "mock", baseUrl: base, model: "mock", ready: true, onCall }));
+    buyerH.addModel(openaiModel({ id: "mock", baseUrl: base, model: "mock", ready: true, onCall }));
   }
 
   const want = pickModel(opts.model, {
     cursor: cursor.ready !== false,
+    openai: openai.ready !== false,
     openrouter: openrouter.ready !== false,
     ollama: ollamaUp,
-    openai: Boolean(opts.liveUrl),
+    mock: Boolean(opts.liveUrl),
   });
   const t0 = Date.now();
   const job = await siteBook(sellerH).ingest(opts.site, {
@@ -169,6 +173,8 @@ export async function runPair(opts: PairOpts) {
       used: want,
       cursorReady: cursor.ready !== false,
       cursorReason: cursor.reasonNotReady,
+      openaiReady: openai.ready !== false,
+      openaiReason: openai.reasonNotReady,
       openrouterReady: openrouter.ready !== false,
       openrouterReason: openrouter.reasonNotReady,
       ollamaReady: ollamaUp,
@@ -223,17 +229,30 @@ interface TurnRec {
 
 export interface ModelReady {
   cursor: boolean;
+  openai?: boolean;
   openrouter: boolean;
   ollama: boolean;
-  openai?: boolean;
+  mock?: boolean;
 }
 
 /** Pick a bound live model. Fail closed when none is ready. */
 export function pickModel(want: PairModel, ready: ModelReady): string {
-  if (want === "cursor" || want === "openrouter" || want === "ollama" || want === "openai") return want;
+  if (want === "cursor" || want === "openai" || want === "openrouter" || want === "ollama" || want === "mock") {
+    return want;
+  }
   const first = LIVE.find((id) => ready[id]);
   if (first) return first;
-  throw new Error("no live model is ready (cursor, openrouter, or ollama)");
+  throw new Error("no live model is ready (cursor, openai, openrouter, or ollama)");
+}
+
+function addOpenAI(onCall: (c: ModelCall) => void) {
+  return openaiModel({
+    id: "openai",
+    baseUrl: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
+    model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+    apiKeyEnv: "OPENAI_API_KEY",
+    onCall,
+  });
 }
 
 function addOpenrouter(onCall: (c: ModelCall) => void) {
@@ -314,6 +333,7 @@ export function asMarkdown(r: Awaited<ReturnType<typeof runPair>>): string {
     "- wanted: `" + r.model.wanted + "`",
     "- used: `" + r.model.used + "`",
     "- cursor ready: " + r.model.cursorReady + (r.model.cursorReason ? " (" + r.model.cursorReason + ")" : ""),
+    "- openai ready: " + r.model.openaiReady + (r.model.openaiReason ? " (" + r.model.openaiReason + ")" : ""),
     "- openrouter ready: " + r.model.openrouterReady + (r.model.openrouterReason ? " (" + r.model.openrouterReason + ")" : ""),
     "- ollama ready: " + r.model.ollamaReady + (r.model.ollamaReason ? " (" + r.model.ollamaReason + ")" : ""),
     "",
@@ -415,7 +435,15 @@ function parseArgs(argv: string[]): PairOpts {
     else if (a === "--model") {
       const v = argv[++i] ?? "live";
       if (v === "script") throw new Error("script model is removed. Use a live LLM.");
-      if (v !== "auto" && v !== "live" && v !== "cursor" && v !== "openrouter" && v !== "ollama" && v !== "openai") {
+      if (
+        v !== "auto" &&
+        v !== "live" &&
+        v !== "cursor" &&
+        v !== "openai" &&
+        v !== "openrouter" &&
+        v !== "ollama" &&
+        v !== "mock"
+      ) {
         throw new Error("unknown model " + v);
       }
       out.model = v;

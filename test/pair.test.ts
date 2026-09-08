@@ -50,14 +50,14 @@ describe("pair experiment", () => {
         buyerPort: 0,
         out: "experiment/last-report.json",
         keep: false,
-        model: "openai",
+        model: "mock",
         liveUrl: llm.url + "v1",
       });
       try {
         expect(report.seller.url).toMatch(/^http/);
         expect(report.buyer.url).toMatch(/^http/);
         expect(report.seller.runId).not.toBe(report.buyer.runId);
-        expect(report.model.used).toBe("openai");
+        expect(report.model.used).toBe("mock");
         expect(report.crawl.pages).toBeGreaterThan(0);
         expect(report.turns.length).toBe(3);
         expect(report.turns[0]!.buyer.length).toBeGreaterThan(0);
@@ -80,11 +80,14 @@ describe("pair experiment", () => {
   test("auto and live fail closed when no LLM is ready", () => {
     const all = { cursor: true, openrouter: true, ollama: true };
     expect(pickModel("auto", all)).toBe("cursor");
+    expect(pickModel("auto", { cursor: false, openai: true, openrouter: true, ollama: true })).toBe("openai");
     expect(pickModel("auto", { cursor: false, openrouter: true, ollama: true })).toBe("openrouter");
     expect(pickModel("auto", { cursor: false, openrouter: false, ollama: true })).toBe("ollama");
     expect(pickModel("auto", { cursor: false, openrouter: false, ollama: false, openai: true })).toBe("openai");
+    expect(pickModel("auto", { cursor: false, openrouter: false, ollama: false, mock: true })).toBe("mock");
     expect(pickModel("live", { cursor: false, openrouter: false, ollama: true })).toBe("ollama");
     expect(pickModel("openai", { cursor: false, openrouter: false, ollama: true, openai: true })).toBe("openai");
+    expect(pickModel("mock", { cursor: false, openrouter: false, ollama: true, mock: true })).toBe("mock");
     expect(pickModel("openrouter", all)).toBe("openrouter");
     expect(() => pickModel("auto", { cursor: false, openrouter: false, ollama: false })).toThrow(/no live model/);
     expect(() => pickModel("live", { cursor: false, openrouter: false, ollama: false })).toThrow(/no live model/);

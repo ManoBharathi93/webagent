@@ -77,7 +77,7 @@ Most agent kits hide the loop behind a spec or a plugin slot. **webagent** expos
 | Fail-closed policy | `transfer_funds`, `delete_account`, `wipe`, `drop_database` never execute. |
 | Hooks | `allow` / `deny` / `{ redirect: { model?, tool? } }` around reason and tools. |
 | MCP | Spec `2025-06-18`, session id, JSON + SSE. Tools are the public verbs only. |
-| Built-in models | `echo` (always ready). `cursor` via `@cursor/sdk` when `CURSOR_API_KEY` is set. `openrouter` when `OPENROUTER_API_KEY` is set. `ollama` when a local Ollama host is up. |
+| Built-in models | `echo` (always ready). `cursor` when `CURSOR_API_KEY` is set. `openai` when `OPENAI_API_KEY` is set. `openrouter` when `OPENROUTER_API_KEY` is set. `ollama` when a local Ollama host is up. |
 
 ## Install
 
@@ -245,6 +245,7 @@ h.addModel({
 | --- | --- | --- |
 | `echo` | always | Deterministic. No network. |
 | `cursor` | if `CURSOR_API_KEY` | `@cursor/sdk` `Agent.prompt`. Cursor tools stay empty. The loop still owns tools. |
+| `openai` | if `OPENAI_API_KEY` | Official OpenAI chat completions. Default `gpt-4o-mini`. |
 | `openrouter` | if `OPENROUTER_API_KEY` | OpenAI-compatible. Added by `defaultHarness()`. |
 | `ollama` | if the local host answers `/api/tags`, or `OLLAMA_HOST` / `OLLAMA_MODEL` is set | OpenAI-compatible at `OLLAMA_HOST` (default `http://127.0.0.1:11434`). |
 
@@ -375,13 +376,10 @@ Subsequent requests send `Mcp-Session-Id`. `ping` is supported.
 Two **separate** harnesses and two listen ports. The seller is the crawled site. The buyer talks to the seller as a machine (`POST /chat`, `x-agent`).
 
 ```sh
-# live LLM required (cursor, then openrouter, then ollama). Fails closed if none is ready.
-bun experiment/run.ts --site https://www.corgi.insure --model live
+# live LLM required (cursor, then openai, then openrouter, then ollama). Fails closed if none is ready.
+export OPENAI_API_KEY=…
+bun experiment/run.ts --site https://www.corgi.insure --model openai
 # or: bun src/cli.ts pair https://www.corgi.insure
-#
-# local LLM:
-# ollama pull qwen2.5:7b
-# bun experiment/run.ts --site https://www.corgi.insure --model ollama
 ```
 
 Writes `experiment/last-report.json` and `.md` (gitignored): crawl hops, both agent cards, each turn’s seller and buyer text, HTTP hops (human vs machine), live model calls.
@@ -396,6 +394,9 @@ Readme of that thread: [CONVERSATION.md](CONVERSATION.md). Live numbers: [experi
 | --- | --- | --- |
 | `CURSOR_API_KEY` | `defaultHarness()` / `cursorModel` | unset → `cursor` listed, not ready |
 | `CURSOR_MODEL` | Cursor model id | `composer-2.5` |
+| `OPENAI_API_KEY` | `defaultHarness()` / pair `openai` | unset → `openai` listed, not ready |
+| `OPENAI_MODEL` | OpenAI model id | `gpt-4o-mini` |
+| `OPENAI_BASE_URL` | OpenAI-compatible host | `https://api.openai.com/v1` |
 | `OPENROUTER_API_KEY` | `defaultHarness()` / `openaiModel` | unset → `openrouter` listed, not ready |
 | `OPENROUTER_MODEL` | OpenRouter model id | `openai/gpt-4o-mini` |
 | `OLLAMA_HOST` | `ollamaModel` | `http://127.0.0.1:11434` |
