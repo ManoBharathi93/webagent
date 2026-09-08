@@ -33,12 +33,12 @@ const GOALS: (keyof GoalScore)[] = [
 export function scorePrompt(text: string): GoalScore {
   const t = text.toLowerCase();
   return {
-    discover: hit(t, [/categor(y|ies)/, /what (the )?startup does/, /saas|fintech|health-tech/, /one question/]),
-    risks: hit(t, [/risk factor/, /risks:/, /map_risks|highlight/]),
+    discover: hit(t, [/company name/, /founder name/, /field|categor(y|ies)/, /one question/, /do not recommend|until you have/]),
+    risks: hit(t, [/risk factor/, /risks:/, /map_risks|highlight/, /site_lookup/]),
     penalty: hit(t, [/penalt/, /if (you )?skip insurance|uninsured|not insured/, /lawsuit|lost deal|coi/]),
     social: hit(t, [/customer|intryc|competitor|similar (problem|company)/, /using corgi|already uses/]),
-    report: hit(t, [/pinpoint report|for you:/, /best fit:/, /do this next/]),
-    grounded: hit(t, [/do not invent|from the pack|only from/, /no (fake|invented) (price|customer|lawsuit)/]),
+    report: hit(t, [/pinpoint report|for you:/, /best fit:/, /do this next/, /founder|company/]),
+    grounded: hit(t, [/do not invent|from the pack|from the files|only from/, /no (fake|invented) (price|customer|lawsuit)/]),
     short: hit(t, [/180 words|short/, /no tool (names|json)/, /one link/]),
   };
 }
@@ -90,8 +90,8 @@ function reflect(cands: PromptCand[]): { id: string; text: string }[] {
   const missing = GOALS.filter((g) => best.score[g] < 1);
   const extra = missing
     .map((g) => {
-      if (g === "discover") return "Ask category and what the startup does. One question per turn.";
-      if (g === "risks") return "After both answers, call map_risks and highlight those risk factors.";
+      if (g === "discover") return "Ask company name, founder name, field, and what they sell. One question per turn. Do not recommend until you have those facts.";
+      if (g === "risks") return "After those answers, call site_lookup then map_risks and highlight those risk factors.";
       if (g === "penalty") return "Show penalties if they are not insured: lost deal, lawsuit, delayed COI. Pack only.";
       if (g === "social") return "Name one similar company with that problem, or a competitor-category customer already using Corgi. Pack only.";
       if (g === "report") return "Reply with one short pinpoint report: For you / Risks / If you skip insurance / Who / Best fit / Do this next.";

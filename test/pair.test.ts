@@ -62,7 +62,7 @@ describe("pair experiment", () => {
         expect(report.turns.length).toBe(3);
         expect(report.turns[0]!.buyer.length).toBeGreaterThan(0);
         expect(report.turns[0]!.seller.length).toBeGreaterThan(0);
-        expect(report.turns[0]!.seller).toMatch(/\$2000|quote|minutes|Seed/i);
+        expect(report.turns.some((t) => /\$2000|quote|minutes|Seed|company|founder/i.test(t.seller))).toBe(true);
         expect(report.analysis.peerCalls).toBeGreaterThan(0);
         expect(report.hops.some((h) => h.kind === "machine")).toBe(true);
         const sellerCard = report.seller.card as { type?: string };

@@ -1,7 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { Harness } from "../src/harness.ts";
 import { intake } from "../src/intake.ts";
-import { attachPack, siteBook } from "../src/site/index.ts";
+import { attachPack, loadCorpus, lookupCorpus, saveCorpus, siteBook } from "../src/site/index.ts";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 function mockSite() {
   let session = "";
@@ -132,6 +135,41 @@ describe("site ingest (on top of harness)", () => {
       expect(body.runId).toBeDefined();
     } finally {
       srv.stop();
+    }
+  });
+
+  test("corpus lookup reads local files and does not invent", () => {
+    const dir = mkdtempSync(join(tmpdir(), "corgi-corpus-"));
+    try {
+      const n = saveCorpus(dir, "https://www.corgi.insure", [
+        {
+          url: "https://www.corgi.insure/saas",
+          title: "SaaS Insurance for Startups",
+          description: "Coverage for SaaS",
+          headings: ["Tech E&O", "Cyber"],
+          text: "Seed SaaS packages include CGL, D&O, Tech E&O, and Cyber. About $2000 to $4000 a year.",
+          status: 200,
+        },
+        {
+          url: "https://www.corgi.insure/customers/intryc",
+          title: "Intryc Customer Story",
+          description: "Intryc uses Corgi",
+          headings: ["Intryc"],
+          text: "Intryc is a software customer on Corgi.",
+          status: 200,
+        },
+      ]);
+      expect(n).toBe(2);
+      const pack = loadCorpus(dir);
+      expect(pack.corpusDir).toBe(dir);
+      expect(pack.pages.length).toBe(2);
+      const hits = lookupCorpus(dir, "SaaS seed cost Intryc");
+      expect(hits.some((h) => /2000|Intryc|SaaS/i.test(h.snippet + h.title))).toBe(true);
+      const h = new Harness();
+      const run = attachPack(h, pack, { model: "echo" });
+      expect(run.getContext().some((m) => m.role === "pin" && /Local corpus/.test(m.content))).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 });

@@ -10,16 +10,16 @@ import { Harness } from "../src/harness.ts";
 import { listen, type Hop } from "../src/host/listen.ts";
 import { ollamaModel, openaiModel, probeOllama, type ModelCall } from "../src/models.ts";
 import { attachSales } from "../src/sales/index.ts";
-import { siteBook } from "../src/site/index.ts";
+import { CORPUS_CORGI, hasCorpus, loadCorpus, siteBook } from "../src/site/index.ts";
 import type { SitePack } from "../src/site/types.ts";
 import { peerTool } from "./peer.ts";
 
 const LIVE = ["cursor", "openai", "openrouter", "ollama", "mock"] as const;
 
 const TURNS = [
-  "I am a seed-stage SaaS founder. We sell a B2B analytics product to other software teams. What coverage do I need and what does it cost?",
-  "How fast can I get a quote compared to a broker?",
-  "Should I buy from Corgi or keep a traditional broker? Give a short recommendation.",
+  "Hi. I need insurance for my startup.",
+  "I am Maya Chen, founder of Northline. We sell B2B analytics to other software teams. Seed stage.",
+  "Our biggest worry is a customer data breach and a product outage. What should we buy, what does it cost, and should we use Corgi or a broker?",
 ];
 
 const args = parseArgs(process.argv.slice(2));
@@ -51,6 +51,8 @@ export interface PairOpts {
   out: string;
   keep: boolean;
   model: PairModel;
+  /** Local page files. When set, skip the live crawl. */
+  corpus?: string;
   /** Test only. OpenAI-compatible /v1 host. Bound as `mock`. */
   liveUrl?: string;
 }
@@ -91,25 +93,34 @@ export async function runPair(opts: PairOpts) {
     mock: Boolean(opts.liveUrl),
   });
   const t0 = Date.now();
-  const job = await siteBook(sellerH).ingest(opts.site, {
-    maxPages: opts.maxPages,
-    fetch: Object.assign(
-      async (input: RequestInfo | URL, init?: RequestInit) => {
-        const start = Date.now();
-        const res = await fetch(input, init);
-        const href = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-        crawl.push({ url: href, status: res.status, ms: Date.now() - start });
-        return res;
-      },
-      fetch,
-    ),
-  });
+  const corpusDir = pickCorpus(opts);
+  let pack: SitePack;
+  if (corpusDir) {
+    pack = loadCorpus(corpusDir);
+    crawl.push({ url: "file:" + corpusDir, status: 200, ms: Date.now() - t0 });
+  } else {
+    const job = await siteBook(sellerH).ingest(opts.site, {
+      maxPages: opts.maxPages,
+      fetch: Object.assign(
+        async (input: RequestInfo | URL, init?: RequestInit) => {
+          const start = Date.now();
+          const res = await fetch(input, init);
+          const href = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+          crawl.push({ url: href, status: res.status, ms: Date.now() - start });
+          return res;
+        },
+        fetch,
+      ),
+    });
+    pack = job.pack;
+  }
   const crawlMs = Date.now() - t0;
-  const pack = job.pack;
   const sellerRun = attachSales(sellerH, pack, { model: want });
   sellerRun.inject({
     vars: [
-      "Call map_risks before you write a pinpoint report.",
+      "Interview first. Ask for company name and founder name if they are missing.",
+      "Do not write a pinpoint report until you have company, founder, field, and what they do.",
+      "Then call note_visitor, site_lookup on the local files, and map_risks.",
       "Use only the customer name the tool returns.",
       "Do not invent Shopify or any other name.",
       "Answer the latest visitor question. Do not repeat an old report.",
@@ -129,6 +140,7 @@ export async function runPair(opts: PairOpts) {
       "You are a founder who wants startup insurance.",
       "The Corgi public agent is a peer.",
       "On every human message you must call ask_peer with that message. Do not answer from memory.",
+      "If the peer asks a question, tell the human that question. Do not invent a company or founder name.",
       "After the tool returns, give a short answer to the human. Quote the peer.",
       "Do not invent a dollar amount. If the peer did not state a price, say the peer did not state a price.",
     ].join(" "),
@@ -190,6 +202,7 @@ export async function runPair(opts: PairOpts) {
       starterQuestions: pack.starterQuestions,
       hops: crawl,
       titles: pack.pages.map((p) => ({ url: p.url, status: p.status, title: p.title, bytes: p.text.length })),
+      corpus: pack.corpusDir ?? "",
     },
     seller: {
       url: seller.url,
@@ -234,6 +247,17 @@ export interface ModelReady {
   openrouter: boolean;
   ollama: boolean;
   mock?: boolean;
+}
+
+function pickCorpus(opts: PairOpts): string | undefined {
+  if (opts.corpus) return opts.corpus;
+  try {
+    const host = new URL(opts.site).hostname.replace(/^www\./, "");
+    if (host === "corgi.insure" && hasCorpus(CORPUS_CORGI)) return CORPUS_CORGI;
+  } catch {
+    return undefined;
+  }
+  return undefined;
 }
 
 /** Pick a bound live model. Fail closed when none is ready. */
@@ -315,7 +339,10 @@ function analyze(pack: SitePack, turns: TurnRec[], hops: Hop[], crawl: { url: st
     humanPage: hops.some((h) => h.kind === "human" && h.path.endsWith("/") && h.status === 200),
     machineCard: hops.some((h) => h.kind === "machine" && h.path.includes("agent.json")),
     notes: [
-      "Seller answers only from the crawled pack plus site_lookup.",
+      pack.corpusDir
+        ? "Seller reads local corpus files with site_lookup. No scrape API at run time."
+        : "Seller answers only from the crawled pack plus site_lookup.",
+      "Seller interviews first: company, founder, field, then a personal report.",
       "Buyer is a separate harness and a separate listen port.",
       "Buyer calls seller over HTTP as a machine (x-agent + JSON).",
       "Both runs bound a live LLM. Buyer and seller are separate harnesses.",
@@ -343,6 +370,7 @@ export function asMarkdown(r: Awaited<ReturnType<typeof runPair>>): string {
     "",
     "- origin: " + r.crawl.origin,
     "- pages: " + r.crawl.pages + " in " + r.crawl.ms + " ms",
+    "- corpus: " + (r.crawl.corpus || "(live crawl)"),
     "- flows: " + r.crawl.flows.join(", "),
     "- crawl hops: " + r.crawl.hops.length,
     "",
@@ -425,6 +453,7 @@ function parseArgs(argv: string[]): PairOpts {
     out: "experiment/last-report.json",
     keep: false,
     model: "live",
+    corpus: "",
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
@@ -433,6 +462,7 @@ function parseArgs(argv: string[]): PairOpts {
     else if (a === "--seller-port") out.sellerPort = Number(argv[++i]) || 0;
     else if (a === "--buyer-port") out.buyerPort = Number(argv[++i]) || 0;
     else if (a === "--out") out.out = argv[++i] ?? out.out;
+    else if (a === "--corpus") out.corpus = argv[++i] ?? "";
     else if (a === "--keep") out.keep = true;
     else if (a === "--model") {
       const v = argv[++i] ?? "live";

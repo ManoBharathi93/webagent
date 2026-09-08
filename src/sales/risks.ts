@@ -4,11 +4,17 @@
 export interface RiskAsk {
   category: string;
   does: string;
+  company?: string;
+  founder?: string;
+  stage?: string;
 }
 
 export interface RiskNote {
   category: string;
   does: string;
+  company: string;
+  founder: string;
+  stage: string;
   risks: string[];
   penalties: string[];
   proof: { kind: "customer" | "story" | "none"; name: string; why: string };
@@ -21,7 +27,7 @@ export interface RiskNote {
 const DEMO = "https://www.corgi.insure/book-a-demo";
 const INSURE = "https://www.corgi.insure";
 
-const ROWS: { match: RegExp; note: Omit<RiskNote, "category" | "does"> }[] = [
+const ROWS: { match: RegExp; note: Omit<RiskNote, "category" | "does" | "company" | "founder" | "stage"> }[] = [
   {
     match: /ai|llm|agent|ml|model/i,
     note: {
@@ -125,7 +131,7 @@ const ROWS: { match: RegExp; note: Omit<RiskNote, "category" | "does"> }[] = [
   },
 ];
 
-const FALLBACK: Omit<RiskNote, "category" | "does"> = {
+const FALLBACK: Omit<RiskNote, "category" | "does" | "company" | "founder" | "stage"> = {
   risks: [
     "General liability if someone is hurt in an office or event (CGL).",
     "Leadership claims (D&O).",
@@ -147,13 +153,18 @@ const FALLBACK: Omit<RiskNote, "category" | "does"> = {
 };
 
 export function mapRisks(ask: RiskAsk): RiskNote {
-  const hay = ask.category + " " + ask.does;
+  const hay = [ask.category, ask.does, ask.stage].filter(Boolean).join(" ");
+  const who = {
+    company: (ask.company ?? "").trim(),
+    founder: (ask.founder ?? "").trim(),
+    stage: (ask.stage ?? "").trim(),
+  };
   for (const row of ROWS) {
     if (row.match.test(hay)) {
-      return { category: ask.category, does: ask.does, ...row.note };
+      return { category: ask.category, does: ask.does, ...who, ...row.note };
     }
   }
-  return { category: ask.category, does: ask.does, ...FALLBACK };
+  return { category: ask.category, does: ask.does, ...who, ...FALLBACK };
 }
 
 export function reportText(note: RiskNote): string {
@@ -161,8 +172,12 @@ export function reportText(note: RiskNote): string {
     note.proof.kind === "none"
       ? "No close match on the crawled pages."
       : `${note.proof.name} — ${note.proof.why}`;
+  const who = [note.founder, note.company].filter(Boolean).join(" at ");
+  const label = [who, note.does || "(what you build)", note.category || "(category)", note.stage]
+    .filter(Boolean)
+    .join(" · ");
   return [
-    `**For you:** ${note.does || "(what you build)"} · ${note.category || "(category)"}`,
+    `**For you:** ${label}`,
     `**Risks:**`,
     ...note.risks.slice(0, 3).map((r) => `- ${r}`),
     `**If you skip insurance:**`,
