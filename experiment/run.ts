@@ -15,6 +15,8 @@ import type { SitePack } from "../src/site/types.ts";
 import { peerTool } from "./peer.ts";
 import { scriptModel } from "./script.ts";
 
+const LIVE = ["cursor", "openrouter", "ollama"] as const;
+
 const TURNS = [
   "I am a seed-stage SaaS founder. What coverage do I need and what does it cost?",
   "How fast can I get a quote compared to a broker?",
@@ -96,6 +98,14 @@ export async function runPair(opts: PairOpts) {
   const crawlMs = Date.now() - t0;
   const pack = job.pack;
   const sellerRun = attachSales(sellerH, pack, { model: want });
+  sellerRun.inject({
+    vars: [
+      "Call map_risks before you write a pinpoint report.",
+      "Use only the customer name the tool returns.",
+      "Do not invent Shopify or any other name.",
+      "Answer the latest visitor question. Do not repeat an old report.",
+    ].join(" "),
+  });
   const seller = listen(sellerH, {
     port: opts.sellerPort,
     hostname: "127.0.0.1",
@@ -108,8 +118,10 @@ export async function runPair(opts: PairOpts) {
     model: want,
     instruction: [
       "You are a founder who wants startup insurance.",
-      "The Corgi public agent is a peer. You must call ask_peer with the human question before you answer.",
-      "After the tool returns, give a short answer to the human. Quote the peer. Do not invent prices.",
+      "The Corgi public agent is a peer.",
+      "On every human message you must call ask_peer with that message. Do not answer from memory.",
+      "After the tool returns, give a short answer to the human. Quote the peer.",
+      "Do not invent a dollar amount. If the peer did not state a price, say the peer did not state a price.",
     ].join(" "),
     tools: [peerTool(seller.url, (h) => hops.push({ ...h, path: "peer:" + h.path } as Hop))],
   });
@@ -209,8 +221,6 @@ export interface ModelReady {
   openrouter: boolean;
   ollama: boolean;
 }
-
-const LIVE = ["cursor", "openrouter", "ollama"] as const;
 
 /** Pick a bound model. live fails closed when no real LLM is ready. */
 export function pickModel(want: PairModel, ready: ModelReady): string {
