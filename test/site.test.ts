@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { Harness } from "../src/harness.ts";
 import { intake } from "../src/intake.ts";
-import { attachPack, loadCorpus, lookupCorpus, saveCorpus, siteBook } from "../src/site/index.ts";
+import { attachPack, isBlog, loadCorpus, lookupCorpus, saveCorpus, siteBook } from "../src/site/index.ts";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -168,6 +168,38 @@ describe("site ingest (on top of harness)", () => {
       const h = new Harness();
       const run = attachPack(h, pack, { model: "echo" });
       expect(run.getContext().some((m) => m.role === "pin" && /Local corpus/.test(m.content))).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("corpus save drops blog pages", () => {
+    const dir = mkdtempSync(join(tmpdir(), "corgi-corpus-"));
+    try {
+      expect(isBlog("https://www.corgi.insure/blog/corgi-vs-vouch")).toBe(true);
+      expect(isBlog("https://www.corgi.insure/saas")).toBe(false);
+      const n = saveCorpus(dir, "https://www.corgi.insure", [
+        {
+          url: "https://www.corgi.insure/saas",
+          title: "SaaS",
+          description: "",
+          headings: [],
+          text: "SaaS coverage",
+          status: 200,
+        },
+        {
+          url: "https://www.corgi.insure/blog/corgi-vs-vouch",
+          title: "Blog",
+          description: "",
+          headings: [],
+          text: "A blog post about Vouch",
+          status: 200,
+        },
+      ]);
+      expect(n).toBe(1);
+      const pack = loadCorpus(dir);
+      expect(pack.pages.every((p) => !isBlog(p.url))).toBe(true);
+      expect(pack.pages.some((p) => /saas/i.test(p.url))).toBe(true);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

@@ -24,6 +24,17 @@ export interface CorpusIndex {
   pages: { url: string; title: string; file: string }[];
 }
 
+/** True for /blog and /blog/... pages. Those files stay out of the corpus. */
+export function isBlog(url: string, file = ""): boolean {
+  if (file === "blog.md" || file.startsWith("blog__")) return true;
+  try {
+    const path = new URL(url).pathname.replace(/\/+$/, "") || "/";
+    return path === "/blog" || path.startsWith("/blog/");
+  } catch {
+    return /\/blog(\/|$)/i.test(url);
+  }
+}
+
 export function saveCorpus(dir: string, origin: string, pages: CorpusPage[]): number {
   const pageDir = join(dir, "pages");
   mkdirSync(pageDir, { recursive: true });
@@ -31,6 +42,7 @@ export function saveCorpus(dir: string, origin: string, pages: CorpusPage[]): nu
   const index: CorpusIndex = { origin, savedAt: new Date().toISOString(), source: "firecrawl", pages: [] };
   for (const p of pages) {
     if (!p.url || !p.text) continue;
+    if (isBlog(p.url)) continue;
     const file = fileName(p.url, seen);
     writeFileSync(join(pageDir, file), asMarkdown(p));
     index.pages.push({ url: p.url, title: p.title, file });
@@ -47,6 +59,8 @@ export function saveCorpus(dir: string, origin: string, pages: CorpusPage[]): nu
       "- Origin: " + origin,
       "- Pages: " + index.pages.length,
       "- Saved: " + index.savedAt,
+      "",
+      "Blog paths are omitted.",
       "",
       "Lookup: `site_lookup` scores `pages/*.md` and returns snippets.",
     ].join("\n"),
@@ -68,6 +82,7 @@ export function loadCorpus(dir: string): SitePack {
         .filter((f) => f.endsWith(".md"))
         .map((f) => ({ url: "", title: "", file: f }));
   for (const row of listed) {
+    if (isBlog(row.url, row.file)) continue;
     const raw = readFileSync(join(dir, "pages", row.file), "utf8");
     pages.push(pageFromMarkdown(raw, row.url, row.title));
   }

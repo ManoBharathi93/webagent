@@ -3,7 +3,7 @@
  * One-shot Firecrawl crawl of a public site. Writes markdown files.
  * The live agent reads those files. It does not call Firecrawl.
  */
-import { saveCorpus, type CorpusPage } from "../src/site/corpus.ts";
+import { isBlog, saveCorpus, type CorpusPage } from "../src/site/corpus.ts";
 
 const ORIGIN = process.argv[2] || "https://www.corgi.insure";
 const OUT = process.argv[3] || "corpus/corgi";
@@ -36,6 +36,7 @@ export async function crawlSite(origin: string, key: string, limit: number): Pro
       limit,
       crawlEntireDomain: true,
       sitemap: "include",
+      excludePaths: ["blog", "blog/*"],
       scrapeOptions: { formats: ["markdown"], onlyMainContent: true },
     }),
   });
@@ -65,7 +66,7 @@ export async function crawlSite(origin: string, key: string, limit: number): Pro
     next = st.next || "https://api.firecrawl.dev/v2/crawl/" + id;
     await sleep(2500);
   }
-  return [...byUrl.values()].map(asPage).filter((p) => p.url && p.text);
+  return [...byUrl.values()].map(asPage).filter((p) => p.url && p.text && !isBlog(p.url));
 }
 
 function asPage(doc: FireDoc): CorpusPage {

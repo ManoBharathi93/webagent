@@ -10,7 +10,7 @@ Ask: scrape Corgi with Firecrawl, store files, retrieve from those files (no API
 
 What changed:
 
-- One-shot scrape: `bun experiment/scrape.ts` → `corpus/corgi` (97 pages).
+- One-shot scrape: `bun experiment/scrape.ts` → `corpus/corgi` (42 pages). Blog paths are omitted.
 - `site_lookup` reads those files. The pair does not call Firecrawl.
 - Sales prompt **sales-v3** (GEPA winner): ask company name and founder name first.
 - `note_visitor` saves those facts. `map_risks` puts them on the report.
@@ -19,7 +19,7 @@ What ran on 2026-09-08 with **openai / gpt-5.6-luna**:
 
 | | |
 | --- | --- |
-| Corpus | 97 local pages |
+| Corpus | 42 local pages (no blogs) |
 | Peer calls | 3 |
 | Turn 1 | Seller asked for the company name |
 | Turn 2 | Report for Maya Chen / Northline, Seed pack, Intryc |

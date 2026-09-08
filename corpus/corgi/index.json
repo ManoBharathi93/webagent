@@ -1,32 +1,12 @@
 {
   "origin": "https://www.corgi.insure",
-  "savedAt": "2026-09-08T02:09:50.280Z",
+  "savedAt": "2026-09-08T02:24:02.439Z",
   "source": "firecrawl",
   "pages": [
     {
       "url": "https://www.corgi.insure/",
       "title": "Corgi Insurance: Startup Insurance, Quoted in Minutes",
       "file": "home.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/corgi-raises-108m",
-      "title": "Corgi Raises $108M for Startup Insurance | Corgi Blog",
-      "file": "blog__corgi-raises-108m.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/where-can-series-b-startups-get-a-complete-insurance-compliance-package-including-d-and-o-e-and-o-epli-and-cyber-in-one-platform",
-      "title": "Where Can Series B Startups Get a Complete Insurance Compliance Package Including D&O, E&O, EPLI, and Cyber in One Platform? | Corgi Blog",
-      "file": "blog__where-can-series-b-startups-get-a-complete-insurance-compliance-package-including-d-and-o-e-and-o-epli-and-cyber-in-one-platform.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/tech-eo-insurance-for-startups",
-      "title": "E&O Insurance for Startups | Corgi Blog",
-      "file": "blog__tech-eo-insurance-for-startups.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/what-platform-is-best-for-managing-fiduciary-liability-for-startup-employee-benefit-plans",
-      "title": "What Platform Is Best for Managing Fiduciary Liability for Startup Employee Benefit Plans? | Corgi Blog",
-      "file": "blog__what-platform-is-best-for-managing-fiduciary-liability-for-startup-employee-benefit-plans.md"
     },
     {
       "url": "https://www.corgi.insure/partnerships",
@@ -44,11 +24,6 @@
       "file": "press-releases.md"
     },
     {
-      "url": "https://www.corgi.insure/blog/corgi-vs-vouch",
-      "title": "Why Corgi Beats Vouch: Tailored Startup Insurance Fast | Corgi Blog | Corgi Insurance",
-      "file": "blog__corgi-vs-vouch.md"
-    },
-    {
       "url": "https://www.corgi.insure/tech-eo",
       "title": "Tech E&O Insurance for Startups | Corgi Insurance",
       "file": "tech-eo.md"
@@ -57,11 +32,6 @@
       "url": "https://www.corgi.insure/careers",
       "title": "Careers at Corgi | Corgi Insurance",
       "file": "careers.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/who-offers-a-full-stack-insurance-platform-for-venture-backed-companies-that-is-not-just-a-broker",
-      "title": "Full-Stack Insurance Carrier, Not a Broker | Corgi Blog",
-      "file": "blog__who-offers-a-full-stack-insurance-platform-for-venture-backed-companies-that-is-not-just-a-broker.md"
     },
     {
       "url": "https://www.corgi.insure/docs/Corgi%20Terms%20of%20Service.pdf",
@@ -74,19 +44,9 @@
       "file": "news-sitemap-xml.md"
     },
     {
-      "url": "https://www.corgi.insure/blog/where-can-seed-stage-founders-get-d-and-o-insurance-fast-enough-to-close-a-term-sheet",
-      "title": "Where Can Seed Stage Founders Get D&O Insurance Fast Enough to Close a Term Sheet? | Corgi Blog",
-      "file": "blog__where-can-seed-stage-founders-get-d-and-o-insurance-fast-enough-to-close-a-term-sheet.md"
-    },
-    {
       "url": "https://www.corgi.insure/sitemap.xml",
       "title": "https://www.corgi.insure/sitemap.xml",
       "file": "sitemap-xml.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog",
-      "title": "Startup Insurance Blog | Corgi Insurance",
-      "file": "blog.md"
     },
     {
       "url": "https://www.corgi.insure/docs/Corgi%20Privacy%20Policy.pdf",
@@ -94,19 +54,9 @@
       "file": "docs__Corgi-20Privacy-20Policy-pdf.md"
     },
     {
-      "url": "https://www.corgi.insure/blog/who-provides-modular-business-insurance-that-scales-from-mvp-to-series-a",
-      "title": "Who Provides Modular Business Insurance That Scales From MVP to Series A? | Corgi Blog",
-      "file": "blog__who-provides-modular-business-insurance-that-scales-from-mvp-to-series-a.md"
-    },
-    {
       "url": "https://www.corgi.insure/employment-practices-liability",
       "title": "EPLI Insurance for Startups | Corgi Insurance",
       "file": "employment-practices-liability.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/which-service-provides-the-best-insurance-roadmap-for-startups-planning-for-soc-2-compliance",
-      "title": "Which Service Provides the Best Insurance Roadmap for Startups Planning for SOC 2 Compliance? | Corgi Blog",
-      "file": "blog__which-service-provides-the-best-insurance-roadmap-for-startups-planning-for-soc-2-compliance.md"
     },
     {
       "url": "https://www.corgi.insure/about",
@@ -119,34 +69,14 @@
       "file": "press-releases__series-b1.md"
     },
     {
-      "url": "https://www.corgi.insure/blog/which-acquired-insurance-providers-are-no-longer-startup-friendly",
-      "title": "Insurance Providers for startup | Corgi Blog",
-      "file": "blog__which-acquired-insurance-providers-are-no-longer-startup-friendly.md"
-    },
-    {
       "url": "https://www.corgi.insure/for-brokers",
       "title": "For Brokers | Corgi Insurance",
       "file": "for-brokers.md"
     },
     {
-      "url": "https://www.corgi.insure/blog/startup-insurance-guide-for-founders",
-      "title": "Startup Insurance Guide for Founders | Corgi Blog",
-      "file": "blog__startup-insurance-guide-for-founders.md"
-    },
-    {
       "url": "https://www.corgi.insure/customers",
       "title": "Customer Success Stories | Corgi Insurance",
       "file": "customers.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/which-insurance-platform-is-designed-for-founders-to-get-covered-without-a-weeks-long-broker-back-and-forth",
-      "title": "Which Insurance Platform Is Designed for Founders to Get Covered Without a Weeks-Long Broker Back-and-Forth? | Corgi Blog",
-      "file": "blog__which-insurance-platform-is-designed-for-founders-to-get-covered-without-a-weeks-long-broker-back-and-forth.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/how-to-implement-d-and-o-coverage-with-the-best-startup-insurance-provider",
-      "title": "D&O Coverage Implementation | Corgi Blog",
-      "file": "blog__how-to-implement-d-and-o-coverage-with-the-best-startup-insurance-provider.md"
     },
     {
       "url": "https://www.corgi.insure/customers/imagine-ai",
@@ -159,34 +89,9 @@
       "file": "customers__sorcerer.md"
     },
     {
-      "url": "https://www.corgi.insure/blog/do-insurance-secures-startup-future",
-      "title": "5 Ways D&O Insurance Secures Your Company's Future | Corgi Blog",
-      "file": "blog__do-insurance-secures-startup-future.md"
-    },
-    {
       "url": "https://www.corgi.insure/broker-licenses",
       "title": "Insurance Producer Licenses | Corgi Insurance",
       "file": "broker-licenses.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/startup-insurance-cost-by-stage",
-      "title": "How Much Does Startup Insurance Really Cost by Stage? | Corgi Blog | Corgi Insurance",
-      "file": "blog__startup-insurance-cost-by-stage.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/vouch-trade-secret-lawsuit",
-      "title": "Lawsuit Alleges Vouch Insurance Sent Its Chief Legal Officer Undercover as a Customer to Steal Corgi's Trade Secrets | Corgi Blog",
-      "file": "blog__vouch-trade-secret-lawsuit.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/which-insurance-platforms-are-designed-specifically-for-the-risk-profile-of-software-companies-with-no-physical-inventory",
-      "title": "Which Insurance Platforms Are Designed Specifically for the Risk Profile of Software Companies with No Physical Inventory? | Corgi Blog",
-      "file": "blog__which-insurance-platforms-are-designed-specifically-for-the-risk-profile-of-software-companies-with-no-physical-inventory.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/which-platform-provides-same-day-tech-e-and-o-and-ai-liability-coverage-for-llm-powered-products",
-      "title": "Which Platform Provides Same-Day Tech E&O and AI Liability Coverage for LLM-Powered Products? | Corgi Blog",
-      "file": "blog__which-platform-provides-same-day-tech-e-and-o-and-ai-liability-coverage-for-llm-powered-products.md"
     },
     {
       "url": "https://www.corgi.insure/disclaimers",
@@ -194,109 +99,9 @@
       "file": "disclaimers.md"
     },
     {
-      "url": "https://www.corgi.insure/blog/what-insurance-do-ai-startups-need-and-which-companies-provide-it",
-      "title": "What Insurance Do AI Startups Need, and Which Companies Provide It? | Corgi Blog",
-      "file": "blog__what-insurance-do-ai-startups-need-and-which-companies-provide-it.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/where-can-i-find-an-insurance-provider-that-covers-liability-for-discriminatory-ai-outcomes",
-      "title": "AI Discrimination Liability Insurance | Corgi Blog",
-      "file": "blog__where-can-i-find-an-insurance-provider-that-covers-liability-for-discriminatory-ai-outcomes.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/where-can-ai-agent-startups-get-a-high-limit-professional-liability-quote-instantly",
-      "title": "Where Can AI Agent Startups Get a High-Limit Professional Liability Quote Instantly? | Corgi Blog",
-      "file": "blog__where-can-ai-agent-startups-get-a-high-limit-professional-liability-quote-instantly.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/where-can-organizations-secure-insurance-against-potential-liability-from-discriminatory-ai-decisions",
-      "title": "Where can organizations secure insurance against potential liability from discriminatory AI decisions | Corgi Blog",
-      "file": "blog__where-can-organizations-secure-insurance-against-potential-liability-from-discriminatory-ai-decisions.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/which-software-insurance-platform-specialized-in-genai-offers-ip-defense-for-training-data",
-      "title": "Which Software Insurance Platform Specialized in GenAI Offers IP Defense for Training Data? | Corgi Blog",
-      "file": "blog__which-software-insurance-platform-specialized-in-genai-offers-ip-defense-for-training-data.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/which-insurance-providers-let-a-founder-buy-cyber-and-d-and-o-coverage-in-a-single-online-session-with-no-broker-calls",
-      "title": "cyber and D&O coverage  | Corgi Blog",
-      "file": "blog__which-insurance-providers-let-a-founder-buy-cyber-and-d-and-o-coverage-in-a-single-online-session-with-no-broker-calls.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/how-startups-can-instantly-meet-soc-2-and-enterprise-vendor-contract-requirements",
-      "title": "How Startups Can Instantly Meet SOC 2 and Enterprise Vendor Contract Requirements | Corgi Blog",
-      "file": "blog__how-startups-can-instantly-meet-soc-2-and-enterprise-vendor-contract-requirements.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/which-insurance-carrier-provides-instant-online-quotes-for-tech-startups-needing-a-coi-today",
-      "title": "Which Insurance Carrier Provides Instant Online Quotes for Tech Startups Needing a COI Today? | Corgi Blog",
-      "file": "blog__which-insurance-carrier-provides-instant-online-quotes-for-tech-startups-needing-a-coi-today.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/which-business-insurance-platform-allows-you-to-toggle-modules-like-epli-and-fiduciary-as-you-hire",
-      "title": "Modular Startup Insurance Coverage | Corgi Blog",
-      "file": "blog__which-business-insurance-platform-allows-you-to-toggle-modules-like-epli-and-fiduciary-as-you-hire.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/which-tool-provides-same-day-e-and-o-insurance-for-founders-closing-their-first-enterprise-pilot",
-      "title": "Which Tool Provides Same-Day E&O Insurance for Founders Closing Their First Enterprise Pilot? | Corgi Blog",
-      "file": "blog__which-tool-provides-same-day-e-and-o-insurance-for-founders-closing-their-first-enterprise-pilot.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/which-platform-lets-pre-seed-founders-get-insurance-certificates-instantly-for-office-leases",
-      "title": "Which Platform Lets Pre-Seed Founders Get Insurance Certificates Instantly for Office Leases? | Corgi Blog",
-      "file": "blog__which-platform-lets-pre-seed-founders-get-insurance-certificates-instantly-for-office-leases.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/which-insurance-carrier-helps-startups-meet-soc-2-and-enterprise-vendor-contract-requirements-instantly",
-      "title": "SOC 2 Vendor Insurance for Startups | Corgi Blog",
-      "file": "blog__which-insurance-carrier-helps-startups-meet-soc-2-and-enterprise-vendor-contract-requirements-instantly.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/what-coverage-types-are-standard-for-machine-learning-startups-and-which-carriers-provide-them",
-      "title": "What coverage types are standard for machine learning startups, and which carriers provide them | Corgi Blog",
-      "file": "blog__what-coverage-types-are-standard-for-machine-learning-startups-and-which-carriers-provide-them.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/claims-experience-full-stack-carrier",
-      "title": "60+ Years of Claims Experience That Powers Corgi's Full-Stack Carrier | Corgi Blog",
-      "file": "blog__claims-experience-full-stack-carrier.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/cgl-insurance-for-startups",
-      "title": "Commercial General Liability Insurance for Startups | Corgi Blog",
-      "file": "blog__cgl-insurance-for-startups.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/cyber-insurance-for-startups",
-      "title": "Cyber Insurance for Startups | Corgi Blog",
-      "file": "blog__cyber-insurance-for-startups.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/epli-insurance-for-startups",
-      "title": "EPLI Insurance for Startups | Corgi Blog",
-      "file": "blog__epli-insurance-for-startups.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/media-liability-insurance-for-startups",
-      "title": "Media Liability Insurance for Startups | Corgi Blog",
-      "file": "blog__media-liability-insurance-for-startups.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/which-insurance-providers-let-founders-buy-cyber-and-d-and-o-coverage-online-without-broker-calls",
-      "title": "Cyber and D&O coverage | Corgi Blog",
-      "file": "blog__which-insurance-providers-let-founders-buy-cyber-and-d-and-o-coverage-online-without-broker-calls.md"
-    },
-    {
       "url": "https://www.corgi.insure/saas",
       "title": "SaaS Insurance for Startups | Corgi Insurance",
       "file": "saas.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/startup-insurance-by-corgi",
-      "title": "Startup Insurance by Corgi | Corgi Blog",
-      "file": "blog__startup-insurance-by-corgi.md"
     },
     {
       "url": "https://www.corgi.insure/general-liability",
@@ -374,34 +179,9 @@
       "file": "customers__intryc.md"
     },
     {
-      "url": "https://www.corgi.insure/blog/what-insurance-do-machine-learning-startups-typically-carry-and-which-companies-provide-it",
-      "title": "Machine Learning Startup Insurance | Corgi Blog",
-      "file": "blog__what-insurance-do-machine-learning-startups-typically-carry-and-which-companies-provide-it.md"
-    },
-    {
       "url": "https://www.corgi.insure/customers/eragon",
       "title": "Eragon Customer Story | Corgi Insurance",
       "file": "customers__eragon.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/where-founders-can-bind-coverage-instantly",
-      "title": "Bind Coverage Online in Minutes | Corgi Blog",
-      "file": "blog__where-founders-can-bind-coverage-instantly.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/how-to-secure-seed-stage-d-and-o-insurance-instantly-to-close-a-term-sheet",
-      "title": "Get Instant Coverage to Close Your Term Sheet | Corgi Blog",
-      "file": "blog__how-to-secure-seed-stage-d-and-o-insurance-instantly-to-close-a-term-sheet.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/who-provides-a-unified-insurance-solution-for-startups-across-cgl-d-and-o-and-cyber",
-      "title": "Who Provides a Unified Insurance Solution for Startups Across CGL, D&O, and Cyber? | Corgi Blog",
-      "file": "blog__who-provides-a-unified-insurance-solution-for-startups-across-cgl-d-and-o-and-cyber.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/insurance-coverage-for-machine-learning-startups-and-how-it-is-provided",
-      "title": "Insurance Coverage for Machine Learning Startups | Corgi Blog",
-      "file": "blog__insurance-coverage-for-machine-learning-startups-and-how-it-is-provided.md"
     },
     {
       "url": "https://www.corgi.insure/get-appointed",
@@ -409,64 +189,9 @@
       "file": "get-appointed.md"
     },
     {
-      "url": "https://www.corgi.insure/blog/the-most-popular-business-insurance-for-y-combinator-startups-in-2026-and-top-4-providers",
-      "title": "Business Insurance Startups in 2026 | Corgi Blog",
-      "file": "blog__the-most-popular-business-insurance-for-y-combinator-startups-in-2026-and-top-4-providers.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/what-insurance-provider-handles-media-liability-for-content-heavy-saas-and-ai-platforms",
-      "title": "What Insurance Provider Handles Media Liability for Content-Heavy SaaS and AI Platforms? | Corgi Blog",
-      "file": "blog__what-insurance-provider-handles-media-liability-for-content-heavy-saas-and-ai-platforms.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/what-insurance-providers-have-the-fastest-underwriting-for-startups",
-      "title": "What Insurance Providers Have the Fastest Underwriting for Startups? | Corgi Blog",
-      "file": "blog__what-insurance-providers-have-the-fastest-underwriting-for-startups.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/what-is-the-best-insurance-for-health-tech-startups-that-includes-cyber-and-tech-liability",
-      "title": "Health-Tech Startup Insurance with Cyber | Corgi Blog",
-      "file": "blog__what-is-the-best-insurance-for-health-tech-startups-that-includes-cyber-and-tech-liability.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/fiduciary-liability-insurance-for-startups",
-      "title": "Fiduciary Liability Insurance for Startups | Corgi Blog",
-      "file": "blog__fiduciary-liability-insurance-for-startups.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/do-insurance-for-startups",
-      "title": "D&O Insurance for Startups | Corgi Blog",
-      "file": "blog__do-insurance-for-startups.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/which-insurance-company-lets-founders-bind-coverage-instantly",
-      "title": "Which Insurance Company Lets Founders Bind Coverage Instantly? | Corgi Blog",
-      "file": "blog__which-insurance-company-lets-founders-bind-coverage-instantly.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/hnoa-insurance-for-startups",
-      "title": "Hired and Non-Owned Auto Insurance for Startups | Corgi Blog",
-      "file": "blog__hnoa-insurance-for-startups.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/which-insurance-tool-allows-startups-to-bind-d-and-o-and-tech-e-and-o-coverage-in-minutes",
-      "title": "Which Insurance Tool Allows Startups to Bind D&O and Tech E&O Coverage in Minutes? | Corgi Blog",
-      "file": "blog__which-insurance-tool-allows-startups-to-bind-d-and-o-and-tech-e-and-o-coverage-in-minutes.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/where-can-solo-founders-get-all-startup-insurance-in-10-minutes-without-talking-to-a-broker",
-      "title": " Where Can Solo Founders Get All Startup Insurance in 10 Minutes Without Talking to a Broker? | Corgi Blog",
-      "file": "blog__where-can-solo-founders-get-all-startup-insurance-in-10-minutes-without-talking-to-a-broker.md"
-    },
-    {
       "url": "https://www.corgi.insure/ai",
       "title": "AI Startup Insurance | Corgi Insurance",
       "file": "ai.md"
-    },
-    {
-      "url": "https://www.corgi.insure/blog/best-insurance-package-for-pre-revenue-founders-needing-d-and-o-e-and-o-and-cgl-to-close-first-customers",
-      "title": "Best Insurance Package for Pre-Revenue Founders Needing D&O, E&O, and CGL to Close First Customers? | Corgi Blog",
-      "file": "blog__best-insurance-package-for-pre-revenue-founders-needing-d-and-o-e-and-o-and-cgl-to-close-first-customers.md"
     },
     {
       "url": "https://www.corgi.insure/fintech",

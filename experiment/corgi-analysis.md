@@ -4,7 +4,7 @@ Site: https://www.corgi.insure
 Latest run: 2026-09-08T02:12:48Z  
 Branch: `cursor/live-pair-llms-e5be`  
 Model: **openai** `gpt-5.6-luna` on both hosts  
-Corpus: `corpus/corgi` (97 Firecrawl pages). The seller reads those files. It does not call Firecrawl at run time.
+Corpus: `corpus/corgi` (42 pages). Blog paths are omitted. The seller reads those files. It does not call Firecrawl at run time.
 
 ```
 human ──POST /chat──► buyer (openai)
@@ -22,7 +22,7 @@ human ──POST /chat──► buyer (openai)
 
 | Metric | Value |
 | --- | --- |
-| Corpus pages | 97 (local files, 6 ms to load) |
+| Corpus pages | 42 (local files, no blogs) |
 | Agent hops | 15 (2 human, 13 machine) |
 | Peer calls | 3 |
 | Live model calls | 11 |
