@@ -185,8 +185,19 @@ export function chatPage(room: Room, publicUrl: string): Response {
         catch { toast("Copy failed — select the URL"); }
       }
     };
-    document.getElementById("copy-url").onclick = () => copy(URL_TEXT, "Link copied");
-    document.getElementById("copy-prompt").onclick = () => copy(PROMPT, "Prompt copied");
+    const flash = (btn, label) => {
+      const prev = btn.textContent;
+      btn.textContent = label;
+      setTimeout(() => { btn.textContent = prev; }, 1600);
+    };
+    document.getElementById("copy-url").onclick = async (ev) => {
+      await copy(URL_TEXT, "Link copied");
+      flash(ev.currentTarget, "Copied");
+    };
+    document.getElementById("copy-prompt").onclick = async (ev) => {
+      await copy(PROMPT, "Prompt copied");
+      flash(ev.currentTarget, "Copied");
+    };
     const log = document.getElementById("log");
     const add = (cls, text) => {
       const d = document.createElement("div");
