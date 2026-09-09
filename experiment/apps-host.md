@@ -32,7 +32,7 @@ curl -sS -X POST http://127.0.0.1:8787/chat \
 Human URL: `https://composio.agentnet.it.com/`  
 Machine: `POST https://composio.agentnet.it.com/chat` with `{"text":"..."}` (reuse `session`).
 
-Port 8787 is bound on the instance. `deploy/front.sh` adds a dedicated nginx `server_name` for `composio.agentnet.it.com`. It does not change `app.agentnet.market`. Point a Cloudflare proxied A record at `54.89.43.219`.
+Port 8787 is bound on the instance. `deploy/front.sh` adds a dedicated nginx `server_name` for `composio.agentnet.it.com`. It does not change `app.agentnet.market`. Point a Cloudflare proxied A record at `54.89.43.219`. HTTPS is enabled only after Let's Encrypt issues a certificate (HTTP-01 via the ACME webroot); there is no self-signed fallback. Set `WEBAGENT_ACME_EMAIL` if you want a contact on the cert.
 
 ## From a laptop with SSH
 
