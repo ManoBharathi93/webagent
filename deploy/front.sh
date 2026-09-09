@@ -16,9 +16,9 @@ fi
 if grep -q "$MARKER" "$NGINX_CONF"; then
   echo "nginx already has the Composio server block"
 else
-  GW="$(docker exec agentnet-nginx sh -c "ip route | awk '/default/ {print \$3; exit}'")"
+  GW="$(docker inspect agentnet-nginx --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}')"
   if [ -z "$GW" ]; then
-    echo "could not read docker gateway from agentnet-nginx"
+    echo "could not read docker gateway for agentnet-nginx"
     exit 1
   fi
   cp -a "$NGINX_CONF" "$NGINX_CONF.bak.composio"
