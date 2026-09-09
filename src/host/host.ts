@@ -7,6 +7,7 @@ import { chatPage } from "./page.ts";
 import { Room } from "./room.ts";
 import { readSessionId, sessionCookie, Sessions } from "./sessions.ts";
 import { looksLikeSitePage, siteResponse } from "./site.ts";
+import type { McpServerInfo } from "../mcp.ts";
 
 export function publicUrl(req: Request, fallback: string): string {
   const env = process.env.WEBAGENT_PUBLIC_URL;
@@ -24,8 +25,9 @@ export function host(
   fallbackUrl = "http://127.0.0.1:8787",
   meta: AgentCardMeta = {},
   sessions?: Sessions,
+  mcpInfo?: McpServerInfo,
 ): (req: Request) => Promise<Response> {
-  const api = intake(harness);
+  const api = intake(harness, mcpInfo);
   const bag = sessions ?? new Sessions(harness, room);
   return async (req: Request) => {
     if (req.method === "OPTIONS") return corsPreflight();

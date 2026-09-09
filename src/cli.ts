@@ -103,6 +103,7 @@ switch (args[0]) {
         description: appsPublicDescription(),
         instructions: appsPublicInstructions(),
       },
+      mcp: { name: "composio", version: "1.0" },
     });
     console.error(`composio agent ${hosted.url}`);
     console.error(`  human   ${hosted.url}/`);
