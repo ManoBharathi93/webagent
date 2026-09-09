@@ -1,0 +1,16 @@
+[Unit]
+Description=Composio webagent Graph RAG host
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/webagent
+EnvironmentFile=-/opt/webagent/.env
+ExecStart=/usr/local/bin/bun src/cli.ts apps :8787
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

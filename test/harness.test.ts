@@ -30,6 +30,17 @@ describe("copy-on-write context", () => {
 });
 
 describe("models", () => {
+  test("toOpenAI maps pin to system", async () => {
+    const { toOpenAI } = await import("../src/models.ts");
+    const out = toOpenAI([
+      { role: "system", content: "you are the apps agent" },
+      { role: "pin", content: "Local corpus at corpus/composio." },
+      { role: "user", content: "send email" },
+    ]);
+    expect(out[1]).toEqual({ role: "system", content: "Local corpus at corpus/composio." });
+    expect(out.map((m) => (m as { role: string }).role)).not.toContain("pin");
+  });
+
   test("getAvailableModels lists echo ready and openrouter not ready without a key", () => {
     const prev = process.env.OPENROUTER_API_KEY;
     delete process.env.OPENROUTER_API_KEY;

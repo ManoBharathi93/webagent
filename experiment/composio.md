@@ -37,6 +37,8 @@ bun experiment/build-graph.ts              # rebuild graph.json from files
 webagent apps                              # public host
 ```
 
+EC2 systemd host: [apps-host.md](apps-host.md).
+
 | Tool | Job |
 | --- | --- |
 | `recommend_app` | Graph walk + cleaned RAG, reranked docs |

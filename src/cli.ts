@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { networkInterfaces } from "node:os";
 import { defaultHarness } from "./harness.ts";
 import { listen } from "./host/listen.ts";
 
@@ -91,10 +92,12 @@ switch (args[0]) {
       );
     }
     const run = attachApps(h, pack, { model: hasKey ? "openai" : "echo" });
-    const hosted = listen(h, { port, run, model: hasKey ? "openai" : "echo" });
+    const publicUrl = process.env.WEBAGENT_PUBLIC_URL || "http://" + lanIp() + ":" + port;
+    const hosted = listen(h, { port, run, model: hasKey ? "openai" : "echo", publicUrl });
     console.error(`composio agent ${hosted.url}`);
     console.error(`  human   ${hosted.url}/`);
     console.error(`  machine ${hosted.url}/mcp  run ${hosted.room.run.id}`);
+    console.error(`  local   http://127.0.0.1:${port}/`);
     await new Promise(() => {});
     break;
   }
@@ -111,4 +114,17 @@ switch (args[0]) {
   default:
     console.error("unknown command");
     process.exit(2);
+}
+
+function lanIp(): string {
+  try {
+    for (const addrs of Object.values(networkInterfaces())) {
+      for (const a of addrs ?? []) {
+        if (a.family === "IPv4" && !a.internal) return a.address;
+      }
+    }
+  } catch {
+    /* no interfaces */
+  }
+  return "127.0.0.1";
 }

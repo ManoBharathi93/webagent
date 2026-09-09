@@ -17,4 +17,4 @@ Model: `cursor` when `CURSOR_API_KEY` is set. Otherwise `script` (calls the same
 
 Flags: `--site` `--max-pages` `--seller-port` `--buyer-port` `--model auto|cursor|script` `--out` `--keep`.
 
-Composio Graph RAG (separate host): [composio.md](composio.md). `webagent apps`.
+Composio Graph RAG (separate host): [composio.md](composio.md). `webagent apps`. EC2 host: [apps-host.md](apps-host.md).

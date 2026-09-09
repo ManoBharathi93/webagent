@@ -101,7 +101,7 @@ export function openaiModel(opts: { id: string; baseUrl: string; model: string; 
     async reason(req, out, signal) {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (key) headers.Authorization = "Bearer " + key;
-      const body: Record<string, unknown> = { model: opts.model, messages: req.messages };
+      const body: Record<string, unknown> = { model: opts.model, messages: toOpenAI(req.messages) };
       if (req.tools.length) {
         body.tools = req.tools.map((t) => ({
           type: "function",
@@ -130,4 +130,13 @@ export function openaiModel(opts: { id: string; baseUrl: string; model: string; 
       }
     },
   };
+}
+
+/** Map harness frames onto OpenAI chat roles. Pin becomes system. */
+export function toOpenAI(messages: readonly Message[]): Record<string, unknown>[] {
+  return messages.map((m) => {
+    if (m.role === "pin") return { role: "system", content: m.content };
+    if (m.role === "tool") return { role: "tool", content: m.content, tool_call_id: m.toolCallId ?? "" };
+    return { role: m.role, content: m.content };
+  });
 }
