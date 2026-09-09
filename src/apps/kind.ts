@@ -4,24 +4,30 @@ export interface KindRule {
   kind: string;
   match: RegExp;
   uses: string[];
+  /** Well-known slugs that should win a tie for this kind. */
+  lead: string[];
 }
 
 export const KIND_RULES: KindRule[] = [
-  { kind: "email", match: /gmail|outlook|mailchimp|sendgrid|mailgun|postmark|zoho.?mail|yahoo|imap|smtp|resend|mailjet/i, uses: ["send email", "read inbox", "search mail"] },
-  { kind: "chat", match: /slack|discord|teams|telegram|whatsapp|mattermost|rocketchat|guild/i, uses: ["post message", "read channel"] },
-  { kind: "git", match: /github|gitlab|bitbucket|gitea|gogs/i, uses: ["create issue", "open pull request", "list repos"] },
-  { kind: "calendar", match: /calendar|calendly|cal_com|calcom/i, uses: ["create event", "list events"] },
-  { kind: "crm", match: /salesforce|hubspot|pipedrive|attio|affinity|close.?io|zoho.?crm|copper/i, uses: ["create contact", "update deal"] },
-  { kind: "tickets", match: /jira|linear|asana|clickup|trello|monday|zendesk|freshdesk|pagerduty|servicenow|shortcut/i, uses: ["create ticket", "list issues"] },
-  { kind: "docs", match: /notion|confluence|googledocs|coda|outline|wiki/i, uses: ["create page", "search docs"] },
-  { kind: "files", match: /drive|dropbox|box\b|onedrive|one_drive|s3|share.?point|gcs/i, uses: ["upload file", "list files"] },
-  { kind: "pay", match: /stripe|paypal|square|braintree|razorpay|chargebee/i, uses: ["create charge", "list invoices"] },
-  { kind: "sheet", match: /sheet|airtable|excel|rows/i, uses: ["read rows", "write rows"] },
-  { kind: "social", match: /twitter|x_|linkedin|instagram|facebook|tiktok|reddit|youtube|threads/i, uses: ["post update", "read feed"] },
-  { kind: "meet", match: /zoom|googlemeet|google.?meet|webex/i, uses: ["create meeting"] },
-  { kind: "search", match: /serpapi|tavily|perplexity|algolia|exa|browser/i, uses: ["web search"] },
-  { kind: "code", match: /supabase|vercel|netlify|heroku|digital.?ocean|aws|cloudflare|firebase/i, uses: ["deploy", "query database"] },
+  { kind: "email", match: /gmail|outlook|mailchimp|sendgrid|mailgun|postmark|zoho.?mail|yahoo|imap|smtp|resend|mailjet/i, uses: ["send email", "read inbox", "search mail"], lead: ["GMAIL", "OUTLOOK", "RESEND"] },
+  { kind: "chat", match: /slack|discord|teams|telegram|whatsapp|mattermost|rocketchat|guild/i, uses: ["post message", "read channel"], lead: ["SLACK", "DISCORD", "MICROSOFT_TEAMS"] },
+  { kind: "git", match: /github|gitlab|bitbucket|gitea|gogs/i, uses: ["create issue", "open pull request", "list repos"], lead: ["GITHUB", "GITLAB"] },
+  { kind: "calendar", match: /calendar|calendly|cal_com|calcom/i, uses: ["create event", "list events"], lead: ["GOOGLECALENDAR", "OUTLOOK", "CALENDLY"] },
+  { kind: "crm", match: /salesforce|hubspot|pipedrive|attio|affinity|close.?io|zoho.?crm|copper/i, uses: ["create contact", "update deal"], lead: ["HUBSPOT", "SALESFORCE"] },
+  { kind: "tickets", match: /jira|linear|asana|clickup|trello|monday|zendesk|freshdesk|pagerduty|servicenow|shortcut/i, uses: ["create ticket", "list issues"], lead: ["LINEAR", "JIRA", "ASANA"] },
+  { kind: "docs", match: /notion|confluence|googledocs|coda|outline|wiki/i, uses: ["create page", "search docs"], lead: ["NOTION", "GOOGLEDOCS"] },
+  { kind: "files", match: /drive|dropbox|box\b|onedrive|one_drive|s3|share.?point|gcs/i, uses: ["upload file", "list files"], lead: ["GOOGLEDRIVE", "DROPBOX"] },
+  { kind: "pay", match: /stripe|paypal|square|braintree|razorpay|chargebee/i, uses: ["create charge", "list invoices"], lead: ["STRIPE"] },
+  { kind: "sheet", match: /sheet|airtable|excel|rows/i, uses: ["read rows", "write rows"], lead: ["GOOGLESHEETS", "AIRTABLE"] },
+  { kind: "social", match: /twitter|x_|linkedin|instagram|facebook|tiktok|reddit|youtube|threads/i, uses: ["post update", "read feed"], lead: ["TWITTER", "LINKEDIN"] },
+  { kind: "meet", match: /zoom|googlemeet|google.?meet|webex/i, uses: ["create meeting"], lead: ["ZOOM", "GOOGLEMEET"] },
+  { kind: "search", match: /serpapi|tavily|perplexity|algolia|exa|browser/i, uses: ["web search"], lead: ["TAVILY", "PERPLEXITYAI"] },
+  { kind: "code", match: /supabase|vercel|netlify|heroku|digital.?ocean|aws|cloudflare|firebase/i, uses: ["deploy", "query database"], lead: ["SUPABASE", "VERCEL"] },
 ];
+
+export function leadSlugs(kind: string): string[] {
+  return KIND_RULES.find((r) => r.kind === kind)?.lead ?? [];
+}
 
 export function kindOf(slug: string, category = ""): string {
   const hay = slug + " " + category;

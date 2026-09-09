@@ -96,6 +96,25 @@ describe("composio graph rag", () => {
     expect(hit.apps.length).toBeLessThanOrEqual(6);
   });
 
+  test("send email prefers Gmail over another email app", () => {
+    const extra = pages();
+    extra[0] = {
+      ...extra[0]!,
+      text: CATALOG + "| SendGrid | `SENDGRID` | 12 | 0 | API_KEY | — |\n",
+    };
+    extra.push({
+      url: "https://docs.composio.dev/toolkits/sendgrid",
+      title: "SendGrid",
+      description: "email API",
+      headings: ["SendGrid"],
+      text: "- Category: email\n- Auth: API_KEY\nUse `SENDGRID_SEND_EMAIL` to send mail.",
+      status: 200,
+    });
+    const hit = queryGraph(buildGraph("https://docs.composio.dev", extra), "send an email");
+    expect(hit.apps[0]?.slug).toBe("GMAIL");
+    expect(hit.apps.some((a) => a.slug === "SENDGRID")).toBe(true);
+  });
+
   test("query 401 on gmail hits the FAQ page", () => {
     const graph = buildGraph("https://docs.composio.dev", pages());
     const hit = queryGraph(graph, "gmail 401 errors on tool calls");

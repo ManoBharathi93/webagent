@@ -76,6 +76,7 @@ export function parseAppPage(p: CorpusPage): Partial<AppRow> | null {
 
 export function pageRole(url: string): string {
   const u = url.toLowerCase();
+  if (/\/kb\/toolkit\/[^/]+/.test(u) || /\/kb\/guide\/toolkits-/.test(u)) return "app";
   if (/\/toolkits\/[^/]+/.test(u) && !/toolkits\.md|\/toolkits\/?$/.test(u)) return "app";
   if (/toolkits/.test(u)) return "catalog";
   if (/\/authentication|oauth|connected-account/.test(u)) return "auth";
@@ -84,6 +85,10 @@ export function pageRole(url: string): string {
   if (/\/examples\//.test(u)) return "guide";
   if (/\/docs\//.test(u)) return "guide";
   return "guide";
+}
+
+export function appSlugFromUrl(url: string): string {
+  return slugFromUrl(url);
 }
 
 export function mergeApps(catalog: AppRow[], pages: CorpusPage[]): AppRow[] {
@@ -128,7 +133,10 @@ export function mergeApps(catalog: AppRow[], pages: CorpusPage[]): AppRow[] {
 function slugFromUrl(url: string): string {
   try {
     const path = new URL(url).pathname.replace(/\.md$/, "").replace(/\/+$/, "");
-    const m = /\/toolkits\/([^/]+)$/.exec(path) || /\/kb\/toolkit\/([^/]+)$/.exec(path);
+    const m =
+      /\/toolkits\/([^/]+)$/.exec(path) ||
+      /\/kb\/toolkit\/([^/]+)$/.exec(path) ||
+      /\/kb\/guide\/toolkits-([^/]+)$/.exec(path);
     return m ? m[1]!.replace(/-/g, "_").toUpperCase() : "";
   } catch {
     return "";
@@ -163,6 +171,17 @@ function toolSlugsFrom(text: string): string[] {
     if (slug.includes("_") && !out.includes(slug)) out.push(slug);
   }
   return out.slice(0, 80);
+}
+
+/** Keep metadata, FAQ, and tool slugs. Drop long parameter tables. */
+export function clipAppPage(text: string): string {
+  if (text.length < 8000) return text;
+  const faq = text.split(/^## /m).find((b) => /^frequently/i.test(b)) || "";
+  const head = text.split(/^## /m)[0] || text.slice(0, 1200);
+  const slugs = toolSlugsFrom(text);
+  const slugBlock = slugs.length ? "\n\n## Tools\n\n" + slugs.map((s) => "- `" + s + "`").join("\n") : "";
+  const faqBlock = faq ? "## " + faq.trim() : "";
+  return (head.trim() + "\n\n" + faqBlock + slugBlock).trim();
 }
 
 function firstParagraph(text: string): string {

@@ -3,18 +3,22 @@
  * One-shot Firecrawl crawl of Composio docs and the toolkit catalog.
  * Writes markdown files. The live agent reads those files. It does not call Firecrawl.
  */
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+import { clipAppPage } from "../src/apps/parse.ts";
 import { saveCorpus, type CorpusPage } from "../src/site/corpus.ts";
 import { buildGraph, saveGraph } from "../src/apps/graph.ts";
 import { CORPUS_COMPOSIO } from "../src/apps/types.ts";
 
 const DOCS = "https://docs.composio.dev";
-const OUT = process.argv[2] || CORPUS_COMPOSIO;
+const OUT = process.argv.slice(2).find((a) => !a.startsWith("--")) || CORPUS_COMPOSIO;
 const LIMIT = Number(process.env.FIRECRAWL_LIMIT || 400);
 
 if (import.meta.main) {
   const key = process.env.FIRECRAWL_API_KEY ?? "";
   if (!key) throw new Error("missing FIRECRAWL_API_KEY");
-  const pages = await crawlAll(key, LIMIT);
+  const mustOnly = process.argv.includes("--must");
+  const pages = mustOnly ? await fillMust(key, OUT) : await crawlAll(key, LIMIT);
   const saved = saveCorpus(OUT, DOCS, pages);
   const graph = buildGraph(DOCS, pages);
   saveGraph(OUT, graph);
@@ -32,6 +36,31 @@ interface FireDoc {
   };
 }
 
+/** Popular apps + auth/error docs. A blind crawl of 400 pages often misses these. */
+const MUST = [
+  "/toolkits.md",
+  "/docs/quickstart.md",
+  "/docs/authentication.md",
+  "/docs/authentication/custom-app-vs-managed-app.md",
+  "/docs/authentication/controlling-scopes.md",
+  "/docs/triggers.md",
+  "/docs/configuring-sessions.md",
+  "/docs/how-composio-works.md",
+  "/kb/guide/faqs.md",
+  "/kb/guide/platform-google-oauth.md",
+  "/kb/guide/sdk-tool-execution-retries.md",
+  "/reference/errors.md",
+  "/reference/v3/errors.md",
+  ...[
+    "gmail", "github", "slack", "outlook", "googlecalendar", "notion", "googlesheets",
+    "supabase", "hubspot", "linear", "airtable", "jira", "discord", "microsoft_teams",
+    "asana", "salesforce", "calendly", "trello", "clickup", "stripe", "mailchimp",
+    "attio", "googlemeet", "dropbox", "confluence", "zendesk", "pagerduty", "zoom",
+    "linkedin", "twitter", "googledrive", "googledocs", "tavily", "perplexityai",
+    "whatsapp", "telegram", "resend", "sendgrid", "gitlab",
+  ].flatMap((s) => ["/toolkits/" + s + ".md", "/kb/toolkit/" + s, "/kb/guide/toolkits-" + s + ".md"]),
+];
+
 export async function crawlAll(key: string, limit: number): Promise<CorpusPage[]> {
   const byUrl = new Map<string, CorpusPage>();
   const docs = await crawlSite(DOCS, key, limit, {
@@ -48,12 +77,111 @@ export async function crawlAll(key: string, limit: number): Promise<CorpusPage[]
       "examples/*",
     ],
   });
-  for (const p of docs) byUrl.set(p.url, p);
-  if (![...byUrl.keys()].some((u) => /\/toolkits(\.md)?$/i.test(u.replace(/\/$/, "")))) {
+  for (const p of docs) byUrl.set(normUrl(p.url), clip(p));
+  const hasCatalog = [...byUrl.values()].some((p) => /All Toolkits/.test(p.text) && /\| Slug \|/.test(p.text));
+  if (!hasCatalog) {
     const cat = await scrapeOne(DOCS + "/toolkits.md", key);
-    if (cat) byUrl.set(cat.url, cat);
+    if (cat) byUrl.set(normUrl(cat.url), cat);
+  }
+  for (const path of MUST) {
+    const url = DOCS + path;
+    const cur = byUrl.get(normUrl(url));
+    if (cur && !thinPage(cur)) continue;
+    const page = await scrapeOne(url, key);
+    if (page) byUrl.set(normUrl(page.url), keepBetter(cur, clip(page)));
   }
   return [...byUrl.values()];
+}
+
+function normUrl(url: string): string {
+  return url.replace(/\.md$/i, "").replace(/\/$/, "");
+}
+
+function clip(p: CorpusPage): CorpusPage {
+  const u = p.url.toLowerCase();
+  if (!/\/toolkits\/[^/]+/.test(u) || /\/toolkits(\.md)?$/.test(u.replace(/\/$/, ""))) return p;
+  return { ...p, text: clipAppPage(p.text) };
+}
+
+/** Merge on-disk pages with MUST scrapes. No full crawl. */
+export async function fillMust(key: string, dir: string): Promise<CorpusPage[]> {
+  const byUrl = new Map<string, CorpusPage>();
+  for (const p of loadPages(dir)) byUrl.set(normUrl(p.url), clip(p));
+  const need = MUST.filter((path) => {
+    const cur = byUrl.get(normUrl(DOCS + path));
+    return !cur || thinPage(cur);
+  });
+  await pool(need, 4, async (path) => {
+    const url = DOCS + path;
+    console.log("scrape " + url);
+    const page = await scrapeOne(url, key);
+    if (page) byUrl.set(normUrl(page.url), keepBetter(byUrl.get(normUrl(url)), clip(page)));
+  });
+  return [...byUrl.values()];
+}
+
+async function pool<T>(items: T[], n: number, fn: (item: T) => Promise<void>): Promise<void> {
+  let i = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(n, items.length) }, async () => {
+      while (i < items.length) {
+        const item = items[i++]!;
+        try {
+          await fn(item);
+        } catch (err) {
+          console.error("skip " + String(item) + " " + (err instanceof Error ? err.message : err));
+        }
+      }
+    }),
+  );
+}
+
+function thinPage(p: CorpusPage): boolean {
+  return !/Category:/i.test(p.text) && !/\| Slug \|/.test(p.text);
+}
+
+function keepBetter(a: CorpusPage | undefined, b: CorpusPage | null): CorpusPage {
+  if (!a) return b!;
+  if (!b) return a;
+  const score = (p: CorpusPage) =>
+    p.text.length + (/Category:/i.test(p.text) ? 8000 : 0) + (/\| Slug \|/.test(p.text) ? 20000 : 0);
+  return score(a) >= score(b) ? a : b;
+}
+
+function loadPages(dir: string): CorpusPage[] {
+  const indexFile = join(dir, "index.json");
+  if (!existsSync(indexFile)) return [];
+  const index = JSON.parse(readFileSync(indexFile, "utf8")) as {
+    pages: { url: string; title: string; file: string }[];
+  };
+  const rows = index.pages.length
+    ? index.pages
+    : readdirSync(join(dir, "pages")).filter((f) => f.endsWith(".md")).map((file) => ({ url: "", title: "", file }));
+  const out: CorpusPage[] = [];
+  for (const row of rows) {
+    const raw = readFileSync(join(dir, "pages", row.file), "utf8");
+    const meta: Record<string, string> = {};
+    let body = raw;
+    if (raw.startsWith("---\n")) {
+      const end = raw.indexOf("\n---\n", 4);
+      if (end > 0) {
+        for (const line of raw.slice(4, end).split("\n")) {
+          const i = line.indexOf(":");
+          if (i > 0) meta[line.slice(0, i).trim()] = line.slice(i + 1).trim();
+        }
+        body = raw.slice(end + 5);
+      }
+    }
+    out.push({
+      url: meta.url || row.url,
+      title: meta.title || row.title,
+      description: meta.description || "",
+      headings: [],
+      text: body.trim(),
+      status: 200,
+    });
+  }
+  return out;
 }
 
 export async function crawlSite(

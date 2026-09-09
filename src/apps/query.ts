@@ -3,6 +3,7 @@
  * High: kind + use. Low: app name/slug + FAQ/error text.
  * Walk one hop to collect apps and debug pages.
  */
+import { leadSlugs } from "./kind.ts";
 import type { AppGraph, AppHit, GraphAsk, GraphNode, PageHit } from "./types.ts";
 
 const STOP = new Set([
@@ -12,6 +13,7 @@ const STOP = new Set([
 ]);
 
 export function queryGraph(graph: AppGraph, question: string, limit = 6): GraphAsk {
+  const q = question.toLowerCase();
   const words = tokens(question);
   const byId = new Map(graph.nodes.map((n) => [n.id, n]));
   const seed = new Map<string, number>();
@@ -19,10 +21,13 @@ export function queryGraph(graph: AppGraph, question: string, limit = 6): GraphA
   for (const n of graph.nodes) {
     const hay = (n.label + " " + Object.values(n.meta).join(" ")).toLowerCase();
     let score = 0;
+    if (n.kind === "use" && q.includes(n.label.toLowerCase())) score += 14;
+    if (n.kind === "kind" && (q.includes(n.label) || words.includes(n.label))) score += 10;
     for (const w of words) {
       if (n.kind === "kind" && (n.label === w || hay.includes(w))) score += 8;
       else if (n.kind === "use" && hay.includes(w)) score += 6;
-      else if (n.kind === "app" && (n.meta.slug?.toLowerCase() === w || hay.includes(w))) score += 10;
+      else if (n.kind === "app" && (n.meta.slug?.toLowerCase() === w || n.label.toLowerCase() === w)) score += 12;
+      else if (n.kind === "app" && hay.includes(w)) score += 4;
       else if (n.kind === "page" && hay.includes(w)) score += n.meta.role === "faq" ? 7 : 3;
     }
     if (score) seed.set(n.id, score);
@@ -40,6 +45,15 @@ export function queryGraph(graph: AppGraph, question: string, limit = 6): GraphA
     cur.score += add;
     if (why && !cur.why.includes(why)) cur.why.push(why);
     appScore.set(id, cur);
+  };
+
+  const rankApp = (n: GraphNode, base: number): number => {
+    const slug = (n.meta.slug || "").toUpperCase();
+    const kind = n.meta.kind || "";
+    const tools = Number(n.meta.tools || 0);
+    let extra = Math.min(tools, 80) / 20;
+    if (leadSlugs(kind).includes(slug)) extra += 6;
+    return base + extra;
   };
 
   for (const [id, s] of seed) {
@@ -71,7 +85,10 @@ export function queryGraph(graph: AppGraph, question: string, limit = 6): GraphA
   }
 
   const apps: AppHit[] = [...appScore.entries()]
-    .map(([id, v]) => hitFrom(byId.get(id)!, v.score, v.why))
+    .map(([id, v]) => {
+      const n = byId.get(id)!;
+      return hitFrom(n, rankApp(n, v.score), v.why);
+    })
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 

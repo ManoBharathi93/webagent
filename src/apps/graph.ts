@@ -5,7 +5,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { CorpusPage } from "../site/corpus.ts";
-import { mergeApps, pageRole, parseCatalog } from "./parse.ts";
+import { appSlugFromUrl, mergeApps, pageRole, parseCatalog } from "./parse.ts";
 import type { AppGraph, GraphEdge, GraphNode } from "./types.ts";
 
 export function buildGraph(origin: string, pages: CorpusPage[]): AppGraph {
@@ -75,8 +75,8 @@ export function buildGraph(origin: string, pages: CorpusPage[]): AppGraph {
       meta: { url: p.url, role, snippet: p.text.slice(0, 400) },
     });
     if (role === "app") {
-      const slug = (p.url.match(/toolkits\/([^/?#]+)/i) || p.url.match(/toolkit\/([^/?#]+)/i))?.[1];
-      if (slug) addEdge({ from: "app:" + slug.replace(/-/g, "_").toLowerCase(), rel: "docs", to: pageId });
+      const slug = appSlugFromUrl(p.url);
+      if (slug) addEdge({ from: "app:" + slug.toLowerCase(), rel: "docs", to: pageId });
     }
     if (role === "auth" || role === "debug" || role === "guide") {
       const hay = (p.title + " " + p.url + " " + p.text.slice(0, 800)).toLowerCase();

@@ -1,7 +1,7 @@
 /**
  * On-disk site corpus. The agent reads these files. It does not call a scrape API.
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { buildPack } from "./pack.ts";
 import type { PageShot, SitePack } from "./types.ts";
@@ -24,6 +24,7 @@ export interface CorpusIndex {
 
 export function saveCorpus(dir: string, origin: string, pages: CorpusPage[]): number {
   const pageDir = join(dir, "pages");
+  rmSync(pageDir, { recursive: true, force: true });
   mkdirSync(pageDir, { recursive: true });
   const seen = new Set<string>();
   const index: CorpusIndex = { origin, savedAt: new Date().toISOString(), source: "firecrawl", pages: [] };

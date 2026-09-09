@@ -1,8 +1,12 @@
 # Composio webagent
 
-Typed **Graph RAG** over Composio apps and docs. Not generic vector search.
+Typed **Graph RAG** over Composio apps and docs.
 
-The catalog is a routing problem: a request → kind (email, git, chat) → use (send email, create issue) → app (Gmail, GitHub) → FAQ/docs for debug.
+This is not generic vector search and not LLM entity extraction (graphify-style). The catalog is already typed: Toolkit, Slug, Auth, Category, Tools, FAQs. The useful graph is the routing path a builder already has in their head:
+
+a request → kind (email, git, chat) → use (send email, create issue) → app (Gmail, GitHub) → FAQ/docs for debug.
+
+Dual-level retrieval (LightRAG idea, no extra service) matches kind/use first, then app name and FAQ text, then walks one hop. Lead slugs (Gmail, GitHub, Slack) win ties so a 1,500-app catalog does not dump every mail vendor.
 
 ```
 kind ──in_kind── app ──solves── use
@@ -22,6 +26,7 @@ Firecrawl runs **once**. The agent reads `corpus/composio`. It does not call Fir
 ```sh
 set -a; . .env; set +a
 bun experiment/scrape-composio.ts          # crawl docs.composio.dev
+bun experiment/scrape-composio.ts --must   # add catalog + popular apps if a crawl missed them
 bun experiment/build-graph.ts              # rebuild graph.json from files
 webagent apps                              # public host
 ```
