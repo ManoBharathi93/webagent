@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Publish the apps agent on composio.agentnet.it.com via the existing
-# docker nginx (port 80). Cloudflare terminates HTTPS (same as app.agentnet.market).
-# Does not change the app.agentnet.market server.
+# docker nginx (port 80 + 443). Does not change app.agentnet.market.
 set -euo pipefail
 
 NGINX_CONF="${WEBAGENT_NGINX_CONF:-/home/ec2-user/agentnet-platform/deploy/nginx.conf}"
+CERT_DIR="$(dirname "$NGINX_CONF")/certs"
 MARKER="Composio webagent"
 HOST_NAME="${WEBAGENT_FRONT_HOST:-composio.agentnet.it.com}"
 HOST_ALIASES="${WEBAGENT_FRONT_HOST_ALIASES:-ec2-54-89-43-219.compute-1.amazonaws.com}"
@@ -19,6 +19,28 @@ GW="$(docker inspect agentnet-nginx --format '{{range .NetworkSettings.Networks}
 if [ -z "$GW" ]; then
   echo "could not read docker gateway for agentnet-nginx"
   exit 1
+fi
+
+mkdir -p "$CERT_DIR/acme/.well-known/acme-challenge"
+LE_FULL="/etc/letsencrypt/live/${HOST_NAME}/fullchain.pem"
+LE_KEY="/etc/letsencrypt/live/${HOST_NAME}/privkey.pem"
+if [ -r "$LE_FULL" ] && [ -r "$LE_KEY" ]; then
+  cp "$LE_FULL" "$CERT_DIR/composio.crt"
+  cp "$LE_KEY" "$CERT_DIR/composio.key"
+elif sudo test -f "$LE_FULL" && sudo test -f "$LE_KEY"; then
+  sudo cp "$LE_FULL" "$CERT_DIR/composio.crt"
+  sudo cp "$LE_KEY" "$CERT_DIR/composio.key"
+  sudo chown "$(id -un):$(id -gn)" "$CERT_DIR/composio.crt" "$CERT_DIR/composio.key"
+fi
+if [ -f "$CERT_DIR/composio.crt" ] && [ -f "$CERT_DIR/composio.key" ]; then
+  chmod 644 "$CERT_DIR/composio.crt" "$CERT_DIR/composio.key"
+fi
+if [ ! -f "$CERT_DIR/composio.crt" ] || [ ! -f "$CERT_DIR/composio.key" ]; then
+  openssl req -x509 -nodes -newkey rsa:2048 -days 3 \
+    -subj "/CN=$HOST_NAME" \
+    -keyout "$CERT_DIR/composio.key" \
+    -out "$CERT_DIR/composio.crt"
+  chmod 644 "$CERT_DIR/composio.crt" "$CERT_DIR/composio.key"
 fi
 
 cp -a "$NGINX_CONF" "$NGINX_CONF.bak.composio"
@@ -38,7 +60,15 @@ cat >> "$NGINX_CONF" <<EOF
 # ${MARKER} — dedicated Host only. Not app.agentnet.market.
 server {
     listen 80;
+    listen 443 ssl;
     server_name ${HOST_NAME} ${HOST_ALIASES};
+    ssl_certificate /etc/nginx/certs/composio.crt;
+    ssl_certificate_key /etc/nginx/certs/composio.key;
+
+    location /.well-known/acme-challenge/ {
+        root /etc/nginx/certs/acme;
+        default_type text/plain;
+    }
 
     location / {
         proxy_pass http://${GW}:${PORT};
@@ -62,6 +92,6 @@ if ! docker exec agentnet-nginx nginx -t; then
   exit 1
 fi
 docker exec agentnet-nginx nginx -s reload
-echo "front http://${HOST_NAME}/  (https via Cloudflare)"
-curl -sS -m 10 "http://127.0.0.1/.well-known/agent-card.json" -H "Host: ${HOST_NAME}"
+echo "front https://${HOST_NAME}/"
+curl -skS -m 10 --resolve "${HOST_NAME}:443:127.0.0.1" "https://${HOST_NAME}/.well-known/agent-card.json"
 echo
