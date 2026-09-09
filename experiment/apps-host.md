@@ -16,7 +16,9 @@ chmod 600 /opt/webagent/.env
 curl -fsSL https://raw.githubusercontent.com/TheAgent-net/webagent/cursor/composio-agent-e5be/deploy/host.sh | bash
 ```
 
-Open TCP **8787** on the security group.
+Open TCP **8787** on the security group. Do not bind 80 or 443 — AgentNet already uses those.
+
+Host this agent used: `ec2-user@ec2-54-89-43-219.compute-1.amazonaws.com` (Amazon Linux 2023). `host.sh` uses `dnf` when `apt-get` is missing, and bun from `~/.bun/bin`.
 
 Check:
 
@@ -27,13 +29,14 @@ curl -sS -X POST http://127.0.0.1:8787/chat \
   -d '{"text":"I need to email customers","from":"human"}'
 ```
 
-Human URL: `http://<public-ip>:8787/`  
-Machine URL: `http://<public-ip>:8787/mcp`
+Human URL: `http://54.89.43.219:8787/`  
+Machine URL: `http://54.89.43.219:8787/mcp`
 
 ## From a laptop with SSH
 
 ```sh
-WEBAGENT_HOST=ubuntu@ec2-xx.compute.amazonaws.com WEBAGENT_ENV=.env ./deploy/push.sh
+WEBAGENT_HOST=ec2-user@ec2-54-89-43-219.compute-1.amazonaws.com \
+WEBAGENT_SSH_KEY=~/.ssh/tejas.pem \
+WEBAGENT_ENV=.env \
+./deploy/push.sh
 ```
-
-This cloud agent has no SSH key and no AWS identity, so it cannot run `push.sh` for you.

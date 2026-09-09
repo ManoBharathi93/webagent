@@ -1,25 +1,50 @@
 #!/usr/bin/env bash
-# Run this on the EC2 host. Installs bun, checks out the apps branch, starts systemd.
+# Run this on the EC2 host. Checks out the apps branch and starts systemd.
 set -euo pipefail
 
 ROOT="${WEBAGENT_ROOT:-/opt/webagent}"
 BRANCH="${WEBAGENT_BRANCH:-cursor/composio-agent-e5be}"
 REPO="${WEBAGENT_REPO:-https://github.com/TheAgent-net/webagent.git}"
 PORT="${WEBAGENT_PORT:-8787}"
+RUN_USER="$(id -un)"
+BUN="${BUN:-}"
 
-if ! command -v git >/dev/null; then
-  sudo apt-get update -y
-  sudo apt-get install -y git ca-certificates curl
-fi
+install_pkg() {
+  if command -v "$1" >/dev/null; then
+    return 0
+  fi
+  if command -v dnf >/dev/null; then
+    sudo dnf install -y "$@"
+  elif command -v yum >/dev/null; then
+    sudo yum install -y "$@"
+  elif command -v apt-get >/dev/null; then
+    sudo apt-get update -y
+    sudo apt-get install -y "$@"
+  else
+    echo "need $* on PATH"
+    exit 1
+  fi
+}
 
-if [ ! -x "$HOME/.bun/bin/bun" ]; then
-  curl -fsSL https://bun.sh/install | bash
+install_pkg git
+command -v curl >/dev/null || install_pkg curl
+
+if [ -z "$BUN" ]; then
+  if [ -x "$HOME/.bun/bin/bun" ]; then
+    BUN="$HOME/.bun/bin/bun"
+  elif command -v bun >/dev/null; then
+    BUN="$(command -v bun)"
+  else
+    curl -fsSL https://bun.sh/install | bash
+    BUN="$HOME/.bun/bin/bun"
+  fi
 fi
-export PATH="$HOME/.bun/bin:$PATH"
-sudo ln -sfn "$HOME/.bun/bin/bun" /usr/local/bin/bun
+export PATH="$(dirname "$BUN"):$PATH"
+sudo mkdir -p /usr/local/bin
+sudo ln -sfn "$BUN" /usr/local/bin/bun
 
 sudo mkdir -p "$ROOT"
-sudo chown "$(id -un):$(id -gn)" "$ROOT"
+sudo chown "$RUN_USER:$(id -gn)" "$ROOT"
 if [ ! -d "$ROOT/.git" ]; then
   git clone "$REPO" "$ROOT"
 fi
@@ -35,12 +60,15 @@ if [ ! -f "$ROOT/.env" ]; then
 fi
 
 sudo cp "$ROOT/deploy/apps.service" /etc/systemd/system/webagent-apps.service
+sudo sed -i "s|^User=.*|User=$RUN_USER|" /etc/systemd/system/webagent-apps.service
 sudo sed -i "s|WorkingDirectory=.*|WorkingDirectory=$ROOT|" /etc/systemd/system/webagent-apps.service
 sudo sed -i "s|EnvironmentFile=-.*|EnvironmentFile=-$ROOT/.env|" /etc/systemd/system/webagent-apps.service
-sudo sed -i "s|:8787|:$PORT|" /etc/systemd/system/webagent-apps.service
+sudo sed -i "s|^Environment=PATH=.*|Environment=PATH=$(dirname "$BUN"):/usr/local/bin:/usr/bin|" /etc/systemd/system/webagent-apps.service
+sudo sed -i "s|^ExecStart=.*|ExecStart=$BUN src/cli.ts apps :$PORT|" /etc/systemd/system/webagent-apps.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now webagent-apps
-sleep 1
+sudo systemctl restart webagent-apps
+sleep 2
 sudo systemctl --no-pager --full status webagent-apps || true
 curl -sS "http://127.0.0.1:${PORT}/agent.json"
 echo
