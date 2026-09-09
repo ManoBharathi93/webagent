@@ -14,17 +14,6 @@ const DOCS = "https://docs.composio.dev";
 const OUT = process.argv.slice(2).find((a) => !a.startsWith("--")) || CORPUS_COMPOSIO;
 const LIMIT = Number(process.env.FIRECRAWL_LIMIT || 400);
 
-if (import.meta.main) {
-  const key = process.env.FIRECRAWL_API_KEY ?? "";
-  if (!key) throw new Error("missing FIRECRAWL_API_KEY");
-  const mustOnly = process.argv.includes("--must");
-  const pages = mustOnly ? await fillMust(key, OUT) : await crawlAll(key, LIMIT);
-  const saved = saveCorpus(OUT, DOCS, pages);
-  const graph = buildGraph(DOCS, pages);
-  saveGraph(OUT, graph);
-  console.log("wrote " + saved + " pages and " + graph.nodes.length + " graph nodes to " + OUT);
-}
-
 interface FireDoc {
   markdown?: string;
   metadata?: {
@@ -282,4 +271,15 @@ async function fire(url: string, key: string, init: { method: string; body?: str
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+if (import.meta.main) {
+  const key = process.env.FIRECRAWL_API_KEY ?? "";
+  if (!key) throw new Error("missing FIRECRAWL_API_KEY");
+  const mustOnly = process.argv.includes("--must");
+  const pages = mustOnly ? await fillMust(key, OUT) : await crawlAll(key, LIMIT);
+  const saved = saveCorpus(OUT, DOCS, pages);
+  const graph = buildGraph(DOCS, pages);
+  saveGraph(OUT, graph);
+  console.log("wrote " + saved + " pages and " + graph.nodes.length + " graph nodes to " + OUT);
 }
