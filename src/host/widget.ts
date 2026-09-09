@@ -20,11 +20,15 @@ export function floatingWidget(publicUrl: string, runId: string): string {
     const panel = document.getElementById("wa-panel");
     if (!fab || !panel) return;
     window.__waBound = true;
-    fab.onclick = () => {
-      const open = panel.classList.toggle("open");
+    const setOpen = (open) => {
+      panel.classList.toggle("open", open);
       fab.innerHTML = open ? CLOSE_ICON : OPEN_ICON;
       fab.classList.toggle("active", open);
+      fab.setAttribute("aria-label", open ? "Close agent chat" : "Open agent chat");
     };
+    fab.onclick = () => setOpen(!panel.classList.contains("open"));
+    const closeBtn = document.getElementById("wa-close");
+    if (closeBtn) closeBtn.onclick = () => setOpen(false);
     const fallbackCopy = (text) => {
       const ta = document.createElement("textarea");
       ta.value = text; ta.setAttribute("readonly", "");
@@ -218,12 +222,13 @@ function widgetMarkup(publicUrl: string, runId: string): string {
   .wa-hdr-title { font-size: .875rem; font-weight: 600; color: #fafafa; }
   .wa-hdr-actions { display: flex; gap: .25rem; }
   .wa-hdr-btn {
-    background: none; border: 0; color: #52525b; cursor: pointer;
-    padding: .25rem; border-radius: 6px; display: flex; align-items: center;
+    background: none; border: 0; color: #a1a1aa; cursor: pointer;
+    width: 2rem; height: 2rem; padding: 0; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
     transition: color .15s, background .15s;
   }
-  .wa-hdr-btn:hover { color: #a1a1aa; background: rgba(255,255,255,.06); }
-  .wa-hdr-btn svg { width: 16px; height: 16px; }
+  .wa-hdr-btn:hover { color: #fafafa; background: rgba(255,255,255,.08); }
+  .wa-hdr-btn svg { width: 18px; height: 18px; }
 
   /* --- A2A banner --- */
   .wa-a2a {
@@ -386,6 +391,11 @@ function widgetMarkup(publicUrl: string, runId: string): string {
     <div class="wa-hdr-left">
       <div class="wa-hdr-icon">✦</div>
       <span class="wa-hdr-title">Composio Agent</span>
+    </div>
+    <div class="wa-hdr-actions">
+      <button class="wa-hdr-btn" id="wa-close" type="button" aria-label="Close chat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
   </div>
   <div class="wa-a2a">
