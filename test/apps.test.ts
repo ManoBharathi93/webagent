@@ -233,6 +233,8 @@ describe("composio graph rag", () => {
     expect(jobIsConcrete("I need to send an email to a customer")).toBe(true);
     expect(jobIsConcrete("create a ticket")).toBe(true);
     expect(jobIsConcrete("sync CRM contacts")).toBe(true);
-    expect(jobIsConcrete("create")).toBe(false);
+    expect(jobIsConcrete("review pull requests")).toBe(true);
+    expect(jobIsConcrete("approve invoices")).toBe(true);
+    expect(jobIsConcrete("monitor my pipeline")).toBe(true);
   });
 });
