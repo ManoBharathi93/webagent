@@ -130,12 +130,16 @@ export function floatingWidget(publicUrl: string, runId: string): string {
         body: JSON.stringify({ text, session }),
       });
     };
+    let composing = false;
+    input.addEventListener("compositionstart", () => { composing = true; });
+    input.addEventListener("compositionend", () => { composing = false; });
     form.onsubmit = async (e) => {
       e.preventDefault();
+      if (composing) return;
       await send();
     };
     input.addEventListener("keydown", (e) => {
-      if (e.shiftKey) return;
+      if (e.shiftKey || e.isComposing || e.keyCode === 229 || composing) return;
       const enter = e.key === "Enter" || e.key === "Return" || e.code === "Enter" || e.code === "NumpadEnter" || e.keyCode === 13;
       if (!enter) return;
       e.preventDefault();

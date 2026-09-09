@@ -103,6 +103,7 @@ describe("host route + shared room", () => {
     expect(html).toContain("wa-fab");
     expect(html).toContain("wa-close");
     expect(html).toContain("shiftKey");
+    expect(html).toContain("isComposing");
     expect(html).toContain("enterkeyhint");
     expect(html).toContain("GET STARTED");
     expect(html).toContain("POST /chat");
