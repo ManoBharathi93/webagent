@@ -12,6 +12,18 @@ const STOP = new Set([
   "an", "to", "of", "in", "on", "or", "is", "it", "we", "i", "a",
 ]);
 
+const GENERIC = new Set([
+  "send", "create", "list", "read", "write", "update", "delete", "search", "post", "store",
+  "rows", "data", "file", "files", "page", "tool", "tools", "error", "errors",
+]);
+
+const KIND_ALIAS: Record<string, string[]> = {
+  sheet: ["spreadsheet", "spreadsheets", "sheets"],
+  email: ["mail", "inbox"],
+  docs: ["document", "documents", "wiki"],
+  tickets: ["ticket", "tickets"],
+};
+
 export function queryGraph(graph: AppGraph, question: string, limit = 6): GraphAsk {
   const q = question.toLowerCase();
   const words = tokens(question);
@@ -19,16 +31,28 @@ export function queryGraph(graph: AppGraph, question: string, limit = 6): GraphA
   const seed = new Map<string, number>();
 
   for (const n of graph.nodes) {
-    const hay = (n.label + " " + Object.values(n.meta).join(" ")).toLowerCase();
     let score = 0;
-    if (n.kind === "use" && q.includes(n.label.toLowerCase())) score += 14;
-    if (n.kind === "kind" && (q.includes(n.label) || words.includes(n.label))) score += 10;
-    for (const w of words) {
-      if (n.kind === "kind" && (n.label === w || hay.includes(w))) score += 8;
-      else if (n.kind === "use" && hay.includes(w)) score += 6;
-      else if (n.kind === "app" && (n.meta.slug?.toLowerCase() === w || n.label.toLowerCase() === w)) score += 12;
-      else if (n.kind === "app" && hay.includes(w)) score += 4;
-      else if (n.kind === "page" && hay.includes(w)) score += n.meta.role === "faq" ? 7 : 3;
+    if (n.kind === "use") {
+      const label = n.label.toLowerCase();
+      const parts = label.split(/\s+/).filter((w) => w && !STOP.has(w));
+      if (parts.length >= 2 && (hasPhrase(words, label) || q.includes(label))) score += 16;
+      else if (overlap(words, label) >= 2) score += 8;
+    } else if (n.kind === "kind") {
+      const aliases = KIND_ALIAS[n.label] ?? [];
+      if (words.includes(n.label) || hasWord(q, n.label) || aliases.some((a) => words.includes(a) || hasWord(q, a))) {
+        score += 12;
+      }
+    } else if (n.kind === "app") {
+      const slug = (n.meta.slug || "").toLowerCase();
+      const name = n.label.toLowerCase();
+      for (const w of words) {
+        if (GENERIC.has(w)) continue;
+        if (slug === w || name === w) score += 14;
+        else if (w.length >= 5 && (slug.includes(w) || hasWord(name, w))) score += 10;
+      }
+    } else if (n.kind === "page") {
+      const hay = (n.label + " " + (n.meta.snippet || "")).toLowerCase();
+      for (const w of words) if (hay.includes(w)) score += n.meta.role === "faq" ? 7 : 3;
     }
     if (score) seed.set(n.id, score);
   }
@@ -64,6 +88,7 @@ export function queryGraph(graph: AppGraph, question: string, limit = 6): GraphA
     if (n.kind === "page") pageScore.set(id, (pageScore.get(id) ?? 0) + s);
   }
 
+  const bestUse = new Map<string, { add: number; why: string }>();
   for (const e of graph.edges) {
     if (e.rel === "in_kind" && seed.has(e.to)) {
       const kind = byId.get(e.to)?.label || "kind";
@@ -73,7 +98,9 @@ export function queryGraph(graph: AppGraph, question: string, limit = 6): GraphA
     if (e.rel === "solves" && seed.has(e.to)) {
       const use = byId.get(e.to)?.label || "use";
       uses.add(use);
-      bumpApp(e.from, (seed.get(e.to) ?? 0) + 6, "use: " + use);
+      const add = (seed.get(e.to) ?? 0) + 6;
+      const cur = bestUse.get(e.from);
+      if (!cur || add > cur.add) bestUse.set(e.from, { add, why: "use: " + use });
     }
     if (e.rel === "faq" && (seed.has(e.to) || seed.has(e.from))) {
       bumpApp(e.from, 3, "faq");
@@ -83,6 +110,7 @@ export function queryGraph(graph: AppGraph, question: string, limit = 6): GraphA
       pageScore.set(e.to, (pageScore.get(e.to) ?? 0) + 4);
     }
   }
+  for (const [id, v] of bestUse) bumpApp(id, v.add, v.why);
 
   const apps: AppHit[] = [...appScore.entries()]
     .map(([id, v]) => {
@@ -136,4 +164,24 @@ function tokens(q: string): string[] {
     .toLowerCase()
     .split(/\W+/)
     .filter((w) => w.length > 1 && !STOP.has(w));
+}
+
+function hasPhrase(words: string[], phrase: string): boolean {
+  const pw = phrase.split(/\s+/).filter((w) => w && !STOP.has(w));
+  if (!pw.length) return false;
+  let i = 0;
+  for (const w of words) {
+    if (w === pw[i]) i++;
+    if (i === pw.length) return true;
+  }
+  return false;
+}
+
+function overlap(words: string[], phrase: string): number {
+  const pw = new Set(phrase.split(/\s+/).filter((w) => w && !STOP.has(w)));
+  return words.filter((w) => pw.has(w)).length;
+}
+
+function hasWord(text: string, word: string): boolean {
+  return new RegExp("(^|[^a-z0-9])" + word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "([^a-z0-9]|$)", "i").test(text);
 }

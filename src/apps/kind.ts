@@ -18,10 +18,10 @@ export const KIND_RULES: KindRule[] = [
   { kind: "docs", match: /notion|confluence|googledocs|coda|outline|wiki/i, uses: ["create page", "search docs"], lead: ["NOTION", "GOOGLEDOCS"] },
   { kind: "files", match: /drive|dropbox|box\b|onedrive|one_drive|s3|share.?point|gcs/i, uses: ["upload file", "list files"], lead: ["GOOGLEDRIVE", "DROPBOX"] },
   { kind: "pay", match: /stripe|paypal|square|braintree|razorpay|chargebee/i, uses: ["create charge", "list invoices"], lead: ["STRIPE"] },
-  { kind: "sheet", match: /sheet|airtable|excel|rows/i, uses: ["read rows", "write rows"], lead: ["GOOGLESHEETS", "AIRTABLE"] },
+  { kind: "sheet", match: /\bsheets?\b|airtable|excel|googlesheets/i, uses: ["read rows", "write rows"], lead: ["GOOGLESHEETS", "AIRTABLE"] },
   { kind: "social", match: /twitter|x_|linkedin|instagram|facebook|tiktok|reddit|youtube|threads/i, uses: ["post update", "read feed"], lead: ["TWITTER", "LINKEDIN"] },
   { kind: "meet", match: /zoom|googlemeet|google.?meet|webex/i, uses: ["create meeting"], lead: ["ZOOM", "GOOGLEMEET"] },
-  { kind: "search", match: /serpapi|tavily|perplexity|algolia|exa|browser/i, uses: ["web search"], lead: ["TAVILY", "PERPLEXITYAI"] },
+  { kind: "search", match: /serpapi|tavily|perplexity|algolia|\bexa\b/i, uses: ["web search"], lead: ["TAVILY", "PERPLEXITYAI"] },
   { kind: "code", match: /supabase|vercel|netlify|heroku|digital.?ocean|aws|cloudflare|firebase/i, uses: ["deploy", "query database"], lead: ["SUPABASE", "VERCEL"] },
 ];
 
@@ -36,6 +36,7 @@ export function kindOf(slug: string, category = ""): string {
     if (KIND_RULES.some((r) => r.kind === cat)) return cat;
     if (cat === "communication") return "chat";
     if (cat === "developer_tools" || cat === "developer") return "git";
+    if (cat === "productivity" && /sheet/i.test(hay)) return "sheet";
   }
   for (const r of KIND_RULES) if (r.match.test(hay)) return r.kind;
   return "other";
@@ -44,8 +45,8 @@ export function kindOf(slug: string, category = ""): string {
 export function usesFor(kind: string, tools: string[] = []): string[] {
   const rule = KIND_RULES.find((r) => r.kind === kind);
   const fromKind = rule?.uses ?? [];
-  const fromTools = tools.map(useFromTool).filter(Boolean) as string[];
-  return unique([...fromTools, ...fromKind]).slice(0, 8);
+  const fromTools = tools.map(useFromTool).filter((u) => keepUse(u, fromKind));
+  return unique([...fromKind, ...fromTools]).slice(0, 8);
 }
 
 /** GMAIL_SEND_EMAIL → "send email". */
@@ -57,6 +58,18 @@ export function useFromTool(slug: string): string {
   if (!VERBS.has(verb)) return rest || slug.toLowerCase().replace(/_/g, " ");
   return (verb + " " + rest).trim();
 }
+
+function keepUse(use: string, kindUses: string[]): boolean {
+  if (!use) return false;
+  const u = use.toLowerCase();
+  if (kindUses.some((k) => k === u || u.includes(k) || k.includes(u))) return true;
+  if (u.split(/\s+/).length > 3) return false;
+  if (NOISE.test(u)) return false;
+  return CORE.test(u);
+}
+
+const NOISE = /api key|webhook|template|version|ip |pool|batch|folder|property|feedback|cart|domain|prompt|filter|label|draft|oauth|scope|token/;
+const CORE = /\b(email|mail|inbox|issue|ticket|pull request|repo|message|channel|event|contact|deal|page|file|charge|invoice|row|sheet|meeting|search|deploy)\b/;
 
 const VERBS = new Set([
   "send", "create", "list", "get", "read", "write", "update", "delete", "search",

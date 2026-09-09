@@ -115,6 +115,36 @@ describe("composio graph rag", () => {
     expect(hit.apps.some((a) => a.slug === "SENDGRID")).toBe(true);
   });
 
+  test("spreadsheet request ranks Google Sheets", () => {
+    const extra = pages();
+    extra[0] = {
+      ...extra[0]!,
+      text: extra[0]!.text + "| Google Sheets | `GOOGLESHEETS` | 40 | 0 | OAUTH2 | Yes |\n",
+    };
+    const hit = queryGraph(buildGraph("https://docs.composio.dev", extra), "store rows in a spreadsheet");
+    expect(hit.kinds).toContain("sheet");
+    expect(hit.apps[0]?.slug).toBe("GOOGLESHEETS");
+  });
+
+  test("create a github issue ranks GitHub", () => {
+    const extra = pages();
+    extra[0] = {
+      ...extra[0]!,
+      text: extra[0]!.text + "| SendGrid | `SENDGRID` | 12 | 0 | API_KEY | — |\n",
+    };
+    extra.push({
+      url: "https://docs.composio.dev/toolkits/github",
+      title: "GitHub",
+      description: "git",
+      headings: ["GitHub"],
+      text: "- Category: developer_tools\n- Auth: OAUTH2\nUse `GITHUB_CREATE_ISSUE` to open an issue.",
+      status: 200,
+    });
+    const hit = queryGraph(buildGraph("https://docs.composio.dev", extra), "create a github issue");
+    expect(hit.apps[0]?.slug).toBe("GITHUB");
+    expect(hit.uses.some((u) => /issue/i.test(u))).toBe(true);
+  });
+
   test("query 401 on gmail hits the FAQ page", () => {
     const graph = buildGraph("https://docs.composio.dev", pages());
     const hit = queryGraph(graph, "gmail 401 errors on tool calls");

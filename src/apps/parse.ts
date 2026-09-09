@@ -47,6 +47,7 @@ export function parseCatalog(text: string): AppRow[] {
 }
 
 export function parseAppPage(p: CorpusPage): Partial<AppRow> | null {
+  if (/\/kb\//i.test(p.url)) return null;
   const slug = slugFromUrl(p.url);
   if (!slug) return null;
   const cat = field(p.text, "Category") || field(p.text, "category");
@@ -54,12 +55,12 @@ export function parseAppPage(p: CorpusPage): Partial<AppRow> | null {
   const tools = Number(field(p.text, "Tools") || 0);
   const triggers = Number(field(p.text, "Triggers") || 0);
   const managed = field(p.text, "Composio-managed OAuth available?") || "";
-  const kind = kindOf(slug, cat || p.title);
+  const kind = kindOf(slug, cat || "");
   const toolSlugs = toolSlugsFrom(p.text);
   const uses = usesFor(kind, toolSlugs);
   const blurb = firstParagraph(p.text);
   return {
-    name: p.title.replace(/\s+\|.*$/, "").trim() || slug,
+    name: cleanName(p.title) || slug,
     slug: slug.toUpperCase(),
     tools: tools || toolSlugs.length,
     triggers,
@@ -116,18 +117,36 @@ export function mergeApps(catalog: AppRow[], pages: CorpusPage[]): AppRow[] {
       });
       continue;
     }
-    if (parsed.kind && parsed.kind !== "other") prev.kind = parsed.kind;
+    if (parsed.kind && parsed.kind !== "other" && prev.kind === "other") prev.kind = parsed.kind;
     if (parsed.auth) prev.auth = parsed.auth;
-    if (parsed.tools) prev.tools = parsed.tools;
+    if ((parsed.tools || 0) > prev.tools) prev.tools = parsed.tools || 0;
     if (parsed.faqs?.length) prev.faqs = parsed.faqs;
     if (parsed.toolSlugs?.length) {
-      prev.toolSlugs = parsed.toolSlugs;
-      prev.uses = usesFor(prev.kind, parsed.toolSlugs);
+      prev.toolSlugs = uniqueSlugs([...prev.toolSlugs, ...parsed.toolSlugs]);
+      prev.uses = usesFor(prev.kind, prev.toolSlugs);
     }
-    if (parsed.blurb) prev.blurb = parsed.blurb;
-    if (parsed.url) prev.url = parsed.url;
+    if (parsed.blurb && parsed.blurb.length > (prev.blurb || "").length) prev.blurb = parsed.blurb;
+    if (parsed.url && /\/toolkits\/[^/]+$/.test(parsed.url) && !/\/kb\//.test(parsed.url)) prev.url = parsed.url;
+    if (parsed.name && !/\[|\(http/.test(parsed.name)) prev.name = parsed.name;
   }
   return [...bySlug.values()];
+}
+
+function uniqueSlugs(xs: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const x of xs) {
+    if (seen.has(x)) continue;
+    seen.add(x);
+    out.push(x);
+  }
+  return out.slice(0, 80);
+}
+
+function cleanName(title: string): string {
+  const t = title.replace(/\s+\|.*$/, "").trim();
+  const m = /^\[([^\]]+)\]/.exec(t);
+  return (m ? m[1]! : t).replace(/[-–]\s*Composio Toolkit.*$/i, "").trim();
 }
 
 function slugFromUrl(url: string): string {
