@@ -69,14 +69,14 @@ export async function crawlAll(key: string, limit: number): Promise<CorpusPage[]
   for (const p of docs) byUrl.set(normUrl(p.url), clip(p));
   const hasCatalog = [...byUrl.values()].some((p) => /All Toolkits/.test(p.text) && /\| Slug \|/.test(p.text));
   if (!hasCatalog) {
-    const cat = await scrapeOne(DOCS + "/toolkits.md", key);
+    const cat = (await fetchMd(DOCS + "/toolkits.md")) || (await scrapeOneRetry(DOCS + "/toolkits.md", key));
     if (cat) byUrl.set(normUrl(cat.url), cat);
   }
   for (const path of MUST) {
     const url = DOCS + path;
     const cur = byUrl.get(normUrl(url));
     if (cur && !thinPage(cur)) continue;
-    const page = await scrapeOne(url, key);
+    const page = (await fetchMd(url)) || (await scrapeOneRetry(url, key));
     if (page) byUrl.set(normUrl(page.url), keepBetter(cur, clip(page)));
   }
   return [...byUrl.values()];
@@ -100,10 +100,10 @@ export async function fillMust(key: string, dir: string): Promise<CorpusPage[]> 
     const cur = byUrl.get(normUrl(DOCS + path));
     return !cur || thinPage(cur);
   });
-  await pool(need, 4, async (path) => {
+  await pool(need, 6, async (path) => {
     const url = DOCS + path;
-    console.log("scrape " + url);
-    const page = await scrapeOne(url, key);
+    console.log("fetch " + url);
+    const page = (await fetchMd(url)) || (await scrapeOneRetry(url, key));
     if (page) byUrl.set(normUrl(page.url), keepBetter(byUrl.get(normUrl(url)), clip(page)));
   });
   return [...byUrl.values()];
@@ -227,6 +227,50 @@ async function scrapeOne(url: string, key: string): Promise<CorpusPage | null> {
   const doc = (raw as { data?: FireDoc }).data ?? (raw as FireDoc);
   const page = asPage(doc);
   return page.url && page.text ? page : null;
+}
+
+async function scrapeOneRetry(url: string, key: string, tries = 4): Promise<CorpusPage | null> {
+  for (let i = 0; i < tries; i++) {
+    try {
+      return await scrapeOne(url, key);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!/429|rate limit/i.test(msg) || i === tries - 1) throw err;
+      const wait = 15000 * (i + 1);
+      console.log("rate limit, wait " + wait + "ms");
+      await sleep(wait);
+    }
+  }
+  return null;
+}
+
+/** Composio serves page.md as the source. Prefer this over Firecrawl for catalog and FAQs. */
+async function fetchMd(url: string): Promise<CorpusPage | null> {
+  const mdUrl = url.endsWith(".md") ? url : url.replace(/\/?$/, "") + ".md";
+  try {
+    const res = await fetch(mdUrl, { headers: { Accept: "text/markdown, text/plain, */*" } });
+    if (res.status >= 300) return null;
+    const text = (await res.text()).trim();
+    if (text.length < 40 || /^<!doctype html/i.test(text)) return null;
+    return {
+      url: mdUrl.replace(/\.md$/i, ""),
+      title: firstHeading(text) || mdUrl,
+      description: "",
+      headings: headingsFrom(text),
+      text,
+      status: 200,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function firstHeading(md: string): string {
+  for (const line of md.split("\n")) {
+    const m = /^(#{1,3})\s+(.+)$/.exec(line.trim());
+    if (m) return m[2]!.replace(/[#*_`]/g, "").trim();
+  }
+  return "";
 }
 
 function asPage(doc: FireDoc): CorpusPage {
