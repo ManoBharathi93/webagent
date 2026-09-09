@@ -5,6 +5,7 @@ import { corsPreflight, withCors } from "./cors.ts";
 import { clientKind, wantsAgentCard } from "./detect.ts";
 import { chatPage } from "./page.ts";
 import { Room } from "./room.ts";
+import { looksLikeSitePage, siteResponse } from "./site.ts";
 
 export function publicUrl(req: Request, fallback: string): string {
   const env = process.env.WEBAGENT_PUBLIC_URL;
@@ -52,6 +53,13 @@ async function route(
     const body = (await req.json().catch(() => ({}))) as { text?: string; from?: "human" | "machine" };
     return Response.json(await room.say(chatFrom(req, body), body.text ?? ""));
   }
+  if ((req.method === "GET" || req.method === "HEAD") && url.pathname !== "/") {
+    const asset = siteResponse(url);
+    if (asset) return asset;
+    if (kind === "human" && looksLikeSitePage(url.pathname) && !reserved(url.pathname)) {
+      return Response.redirect("https://composio.dev" + url.pathname + url.search, 302);
+    }
+  }
   if (url.pathname === "/" && req.method === "GET") {
     if (wantsAgentCard(url) || kind === "machine") return card();
     return chatPage(room, base);
@@ -82,6 +90,13 @@ function chatFrom(req: Request, body: { from?: "human" | "machine" }): "human" |
   const ua = req.headers.get("user-agent") ?? "";
   if (/mozilla/i.test(ua) && !/bot|curl\/|claude|gptbot|httpie|python-requests/i.test(ua)) return "human";
   return clientKind(req);
+}
+
+function reserved(pathname: string): boolean {
+  if (pathname === "/mcp" || pathname === "/chat" || pathname === "/live" || pathname === "/who") return true;
+  if (pathname === "/health" || pathname === "/models" || pathname === "/connect.txt") return true;
+  if (pathname.startsWith("/runs") || pathname.startsWith("/sites")) return true;
+  return CARD_PATHS.has(pathname);
 }
 
 function jsonCard(base: string, room: Room, meta: AgentCardMeta): Response {

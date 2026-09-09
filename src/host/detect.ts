@@ -1,11 +1,12 @@
 export type ClientKind = "human" | "machine";
 
 const MACHINE_UA =
-  /bot|gptbot|claude|anthropic|curl\/|httpie|python-requests|go-http|axios|undici|node-fetch|wget\/|aiohttp|okhttp|java\/|libwww|scrapy|puppeteer|playwright|headless|cursor-ide|openai|copilot|gemini-bot|bytespider|slurp|bingbot|duckduckbot|facebookexternalhit|a2a\/|mcp-client|webagent/i;
+  /bot|gptbot|claude|anthropic|curl\/|httpie|python-requests|go-http|axios|undici|node-fetch|wget\/|aiohttp|okhttp|java\/|libwww|scrapy|puppeteer|playwright|cursor-ide|openai|copilot|gemini-bot|bytespider|slurp|bingbot|duckduckbot|facebookexternalhit|a2a\/|mcp-client|webagent/i;
 
 /**
  * Browser vs AI client.
  * Fail toward machine when unsure so A2A and APIs stay reachable.
+ * A real document navigation (browser tab) is always human, even HeadlessChrome.
  */
 export function clientKind(req: Request): ClientKind {
   const ua = req.headers.get("user-agent") ?? "";
@@ -16,8 +17,8 @@ export function clientKind(req: Request): ClientKind {
   if (req.headers.get("x-agent") || req.headers.get("a2a-version") || req.headers.get("a2a-extensions")) {
     return "machine";
   }
-  if (MACHINE_UA.test(ua)) return "machine";
   if (dest === "document" || dest === "iframe") return "human";
+  if (MACHINE_UA.test(ua)) return "machine";
   if (req.method === "GET" && accept.includes("text/html") && !accept.includes("application/json")) return "human";
   if (
     accept.includes("text/event-stream") ||
