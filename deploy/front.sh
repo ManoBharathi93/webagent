@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Optional: publish the apps agent on the EC2 public DNS via the existing
-# docker nginx (port 80). Does not change the app.agentnet.market server.
+# Publish the apps agent on composio.agentnet.it.com via the existing
+# docker nginx (port 80). Cloudflare terminates HTTPS (same as app.agentnet.market).
+# Does not change the app.agentnet.market server.
 set -euo pipefail
 
 NGINX_CONF="${WEBAGENT_NGINX_CONF:-/home/ec2-user/agentnet-platform/deploy/nginx.conf}"
 MARKER="Composio webagent"
-HOST_NAME="${WEBAGENT_FRONT_HOST:-ec2-54-89-43-219.compute-1.amazonaws.com}"
+HOST_NAME="${WEBAGENT_FRONT_HOST:-composio.agentnet.it.com}"
+HOST_ALIASES="${WEBAGENT_FRONT_HOST_ALIASES:-ec2-54-89-43-219.compute-1.amazonaws.com}"
 PORT="${WEBAGENT_PORT:-8787}"
 
 if [ ! -f "$NGINX_CONF" ]; then
@@ -36,7 +38,7 @@ cat >> "$NGINX_CONF" <<EOF
 # ${MARKER} — dedicated Host only. Not app.agentnet.market.
 server {
     listen 80;
-    server_name ${HOST_NAME};
+    server_name ${HOST_NAME} ${HOST_ALIASES};
 
     location / {
         proxy_pass http://${GW}:${PORT};
@@ -60,6 +62,6 @@ if ! docker exec agentnet-nginx nginx -t; then
   exit 1
 fi
 docker exec agentnet-nginx nginx -s reload
-echo "front http://${HOST_NAME}/"
+echo "front http://${HOST_NAME}/  (https via Cloudflare)"
 curl -sS -m 10 "http://127.0.0.1/.well-known/agent-card.json" -H "Host: ${HOST_NAME}"
 echo
