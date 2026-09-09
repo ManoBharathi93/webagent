@@ -1,10 +1,14 @@
 import { describe, expect, test } from "bun:test";
+import { askApps } from "../src/apps/ask.ts";
 import { attachApps } from "../src/apps/attach.ts";
+import { chunkPages } from "../src/apps/clean.ts";
 import { buildGraph } from "../src/apps/graph.ts";
 import { kindOf, useFromTool } from "../src/apps/kind.ts";
 import { parseCatalog, parseAppPage } from "../src/apps/parse.ts";
 import { appsInstruction } from "../src/apps/prompt.ts";
 import { queryGraph } from "../src/apps/query.ts";
+import { searchChunks } from "../src/apps/rag.ts";
+import { rerankDocs } from "../src/apps/rerank.ts";
 import { Harness } from "../src/harness.ts";
 import { saveCorpus, type CorpusPage } from "../src/site/corpus.ts";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -149,6 +153,33 @@ describe("composio graph rag", () => {
     const graph = buildGraph("https://docs.composio.dev", pages());
     const hit = queryGraph(graph, "gmail 401 errors on tool calls");
     expect(hit.pages.some((p) => /401/.test(p.title + p.snippet))).toBe(true);
+  });
+
+  test("cleaned RAG keeps FAQ answers and drops tables", () => {
+    const chunks = chunkPages(pages());
+    expect(chunks.some((c) => /401/.test(c.title) && /access token/i.test(c.text))).toBe(true);
+    expect(chunks.every((c) => !/^\|/.test(c.text))).toBe(true);
+    const lex = searchChunks(chunks, "gmail 401 errors on tool calls");
+    expect(lex[0]?.title).toMatch(/401/);
+  });
+
+  test("reranker puts the 401 FAQ above a generic graph page", () => {
+    const chunks = chunkPages(pages());
+    const lex = searchChunks(chunks, "gmail 401");
+    const graphPages = [
+      { url: "https://docs.composio.dev/docs/authentication", title: "Authentication", role: "auth", score: 9, snippet: "OAuth and API keys" },
+      { url: "https://docs.composio.dev/toolkits/gmail", title: "Gmail", role: "guide", score: 8, snippet: "Gmail is Google’s email service" },
+    ];
+    const ranked = rerankDocs("gmail 401 errors", graphPages, lex, 4);
+    expect(ranked[0]?.title).toMatch(/401/);
+    expect(ranked[0]?.snippet).toMatch(/access token/i);
+  });
+
+  test("hybrid ask still ranks Gmail for send email", () => {
+    const graph = buildGraph("https://docs.composio.dev", pages());
+    const hit = askApps(graph, chunkPages(pages()), "I need to send an email to a customer");
+    expect(hit.apps[0]?.slug).toBe("GMAIL");
+    expect(hit.pages.length).toBeGreaterThan(0);
   });
 
   test("attachApps binds recommend_app and debug_docs", async () => {

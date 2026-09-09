@@ -168,7 +168,7 @@ function field(text: string, label: string): string {
   return m ? m[1]!.replace(/[`*]/g, "").trim() : "";
 }
 
-function faqsFrom(text: string): { q: string; a: string }[] {
+export function faqsFrom(text: string): { q: string; a: string }[] {
   const out: { q: string; a: string }[] = [];
   const parts = text.split(/^### /m).slice(1);
   for (const part of parts) {

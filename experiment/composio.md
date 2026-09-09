@@ -21,6 +21,12 @@ Query is dual-level (same idea as LightRAG, no extra service):
 2. **Low:** match app slug/name and FAQ/error text
 3. Walk one hop. Rank a few apps. Return neighboring docs.
 
+**Cleaned RAG + rerank** sits beside the graph walk:
+
+1. Split pages into FAQ and prose chunks. Drop tables, nav, and tool schemas.
+2. Lexical search over those chunks.
+3. Reciprocal rank fusion of graph pages and chunks, then a feature rerank (FAQ/auth boost, 401/quota/blocked match).
+
 Firecrawl runs **once**. The agent reads `corpus/composio`. It does not call Firecrawl at run time.
 
 ```sh
@@ -33,8 +39,10 @@ webagent apps                              # public host
 
 | Tool | Job |
 | --- | --- |
-| `recommend_app` | Graph walk: request → apps + why + docs URLs |
-| `debug_docs` | FAQ / auth / error pages for a slug + error string |
+| `recommend_app` | Graph walk + cleaned RAG, reranked docs |
+| `debug_docs` | FAQ / auth / error snippets, reranked |
 | `site_lookup` | Snippets from local markdown |
 
 Do not invent a tool slug. If the graph has no match, say so.
+
+Why this graph, not vectors or graphify: Composio already typed the catalog (slug, auth, category, tools, FAQ). The job is routing (kind → use → app → FAQ), not open entity extraction. Dual-level walk plus one best-use edge per app keeps Gmail / GitHub / Slack on top of 1,500 apps.
