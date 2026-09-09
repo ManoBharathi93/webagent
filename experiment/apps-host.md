@@ -29,8 +29,10 @@ curl -sS -X POST http://127.0.0.1:8787/chat \
   -d '{"text":"I need to email customers","from":"human"}'
 ```
 
-Human URL: `http://54.89.43.219:8787/`  
-Machine URL: `http://54.89.43.219:8787/mcp`
+Human URL: `http://ec2-54-89-43-219.compute-1.amazonaws.com/`  
+Machine URL: `http://ec2-54-89-43-219.compute-1.amazonaws.com/mcp`
+
+Port 8787 is bound on the instance. If the security group does not open 8787, `deploy/front.sh` adds a dedicated nginx `server_name` for the EC2 public DNS. It does not change `app.agentnet.market`.
 
 ## From a laptop with SSH
 

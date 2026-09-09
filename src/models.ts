@@ -134,9 +134,37 @@ export function openaiModel(opts: { id: string; baseUrl: string; model: string; 
 
 /** Map harness frames onto OpenAI chat roles. Pin becomes system. */
 export function toOpenAI(messages: readonly Message[]): Record<string, unknown>[] {
-  return messages.map((m) => {
-    if (m.role === "pin") return { role: "system", content: m.content };
-    if (m.role === "tool") return { role: "tool", content: m.content, tool_call_id: m.toolCallId ?? "" };
-    return { role: m.role, content: m.content };
-  });
+  const out: Record<string, unknown>[] = [];
+  const pending = new Set<string>();
+  for (let i = 0; i < messages.length; i++) {
+    const m = messages[i]!;
+    if (m.role === "pin") {
+      out.push({ role: "system", content: m.content });
+      pending.clear();
+      continue;
+    }
+    if (m.role === "tool") {
+      const id = m.toolCallId ?? "";
+      if (!id || !pending.has(id)) continue;
+      out.push({ role: "tool", content: m.content, tool_call_id: id });
+      continue;
+    }
+    if (m.role === "assistant" && m.toolCalls?.length) {
+      pending.clear();
+      const calls = m.toolCalls.map((tc, j) => {
+        const id = tc.id || "call_" + j;
+        pending.add(id);
+        return {
+          id,
+          type: "function",
+          function: { name: tc.name, arguments: JSON.stringify(tc.arguments ?? {}) },
+        };
+      });
+      out.push({ role: "assistant", content: m.content || null, tool_calls: calls });
+      continue;
+    }
+    pending.clear();
+    out.push({ role: m.role, content: m.content });
+  }
+  return out;
 }
