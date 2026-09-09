@@ -102,9 +102,9 @@ export function queryGraph(graph: AppGraph, question: string, limit = 6): GraphA
       const cur = bestUse.get(e.from);
       if (!cur || add > cur.add) bestUse.set(e.from, { add, why: "use: " + use });
     }
-    if (e.rel === "faq" && (seed.has(e.to) || seed.has(e.from))) {
-      bumpApp(e.from, 3, "faq");
+    if (e.rel === "faq" && seed.has(e.to)) {
       pageScore.set(e.to, (pageScore.get(e.to) ?? 0) + 5);
+      if (appScore.has(e.from) || seed.has(e.from)) bumpApp(e.from, 3, "faq");
     }
     if (e.rel === "docs" && (seed.has(e.from) || appScore.has(e.from))) {
       pageScore.set(e.to, (pageScore.get(e.to) ?? 0) + 4);
