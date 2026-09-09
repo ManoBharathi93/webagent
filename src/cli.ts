@@ -75,7 +75,7 @@ switch (args[0]) {
     break;
   }
   case "apps": {
-    const { attachApps, loadAppsPack } = await import("./apps/index.ts");
+    const { attachApps, loadAppsPack, appsInstruction } = await import("./apps/index.ts");
     const { openaiModel } = await import("./models.ts");
     const addr = args[1] || ":8787";
     const port = Number(addr.replace(/^.*:/, "")) || 8787;
@@ -93,7 +93,18 @@ switch (args[0]) {
     }
     const run = attachApps(h, pack, { model: hasKey ? "openai" : "echo" });
     const publicUrl = process.env.WEBAGENT_PUBLIC_URL || "http://" + lanIp() + ":" + port;
-    const hosted = listen(h, { port, run, model: hasKey ? "openai" : "echo", publicUrl });
+    const hosted = listen(h, {
+      port,
+      run,
+      model: hasKey ? "openai" : "echo",
+      publicUrl,
+      card: {
+        name: "Composio Apps Agent",
+        description:
+          "Public Composio agent: pick apps and debug auth/errors via local Graph RAG. Humans get the site at /. Machines use the agent card, MCP, or POST /chat.",
+        instructions: appsInstruction(),
+      },
+    });
     console.error(`composio agent ${hosted.url}`);
     console.error(`  human   ${hosted.url}/`);
     console.error(`  machine ${hosted.url}/mcp  run ${hosted.room.run.id}`);
