@@ -224,11 +224,15 @@ describe("composio graph rag", () => {
 
   test("jobIsConcrete rejects generic help and accepts short jobs", () => {
     expect(jobIsConcrete("how can you help")).toBe(false);
+    expect(jobIsConcrete("help me")).toBe(false);
+    expect(jobIsConcrete("hello")).toBe(false);
+    expect(jobIsConcrete("what is Composio?")).toBe(false);
     expect(jobIsConcrete("talk to this agent and figure out how it can be beneficial to us")).toBe(false);
     expect(jobIsConcrete("create a github issue")).toBe(true);
     expect(jobIsConcrete("file a Linear issue from a failing test and open a GitHub PR")).toBe(true);
     expect(jobIsConcrete("I need to send an email to a customer")).toBe(true);
     expect(jobIsConcrete("create a ticket")).toBe(true);
     expect(jobIsConcrete("sync CRM contacts")).toBe(true);
+    expect(jobIsConcrete("create")).toBe(false);
   });
 });
