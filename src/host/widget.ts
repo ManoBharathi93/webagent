@@ -116,9 +116,9 @@ export function floatingWidget(publicUrl: string, runId: string): string {
       if (ev.t === "say") add(ev.from || "human", ev.text || "");
       if (ev.t === "reply") add("agent", ev.text || "");
     };
-    document.getElementById("wa-form").onsubmit = async (e) => {
-      e.preventDefault();
-      const input = document.getElementById("wa-text");
+    const form = document.getElementById("wa-form");
+    const input = document.getElementById("wa-text");
+    const send = async () => {
       const text = input.value.trim();
       if (!text) return;
       lastUserText = text;
@@ -130,6 +130,15 @@ export function floatingWidget(publicUrl: string, runId: string): string {
         body: JSON.stringify({ text, session }),
       });
     };
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      await send();
+    };
+    input.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" || e.shiftKey) return;
+      e.preventDefault();
+      send();
+    });
   };
   const OPEN_ICON = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
   const CLOSE_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
@@ -222,8 +231,8 @@ function widgetMarkup(publicUrl: string, runId: string): string {
   .wa-hdr-title { font-size: .875rem; font-weight: 600; color: #fafafa; }
   .wa-hdr-actions { display: flex; gap: .25rem; }
   .wa-hdr-btn {
-    background: none; border: 0; color: #a1a1aa; cursor: pointer;
-    width: 2rem; height: 2rem; padding: 0; border-radius: 8px;
+    background: none; border: 0; color: #e4e4e7; cursor: pointer;
+    width: 2.25rem; height: 2.25rem; padding: 0; border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
     transition: color .15s, background .15s;
   }
