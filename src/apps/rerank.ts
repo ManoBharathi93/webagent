@@ -5,9 +5,16 @@
 import type { PageHit } from "./types.ts";
 import type { ChunkHit } from "./rag.ts";
 
-export function rerankDocs(query: string, graphPages: PageHit[], chunks: ChunkHit[], limit = 6): PageHit[] {
+export function rerankDocs(
+  query: string,
+  graphPages: PageHit[],
+  chunks: ChunkHit[],
+  limit = 6,
+  apps: { slug: string }[] = [],
+): PageHit[] {
   const q = query.toLowerCase();
   const words = q.split(/\W+/).filter((w) => w.length > 2);
+  const lead = apps.slice(0, 3).map((a) => a.slug.toLowerCase()).filter(Boolean);
   const fused = new Map<string, { hit: PageHit; rrf: number; graph: number; lex: number }>();
 
   graphPages.forEach((p, i) => {
@@ -38,6 +45,10 @@ export function rerankDocs(query: string, graphPages: PageHit[], chunks: ChunkHi
     if (/\b403\b/.test(q) && /403/.test(hay)) score += 8;
     if (/quota|rate limit/.test(q) && /quota|rate limit/.test(hay)) score += 8;
     if (/blocked/.test(q) && /blocked/.test(hay)) score += 8;
+    const place = lead.findIndex((s) => v.hit.url.toLowerCase().includes(s) || v.hit.title.toLowerCase().includes(s));
+    if (place === 0) score += 10;
+    else if (place === 1) score += 6;
+    else if (place === 2) score += 3;
     return { ...v.hit, score };
   });
   ranked.sort((a, b) => b.score - a.score);

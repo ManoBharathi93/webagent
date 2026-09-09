@@ -24,6 +24,6 @@ export function chunksFromPack(pack: SitePack): TextChunk[] {
 export function askApps(graph: AppGraph, chunks: TextChunk[], question: string, limit = 6): GraphAsk {
   const graphHit = queryGraph(graph, question, limit);
   const lex = searchChunks(chunks, question, 12);
-  const pages = rerankDocs(question, graphHit.pages, lex, limit);
+  const pages = rerankDocs(question, graphHit.pages, lex, limit, graphHit.apps);
   return { ...graphHit, pages };
 }

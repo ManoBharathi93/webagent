@@ -170,7 +170,7 @@ describe("composio graph rag", () => {
       { url: "https://docs.composio.dev/docs/authentication", title: "Authentication", role: "auth", score: 9, snippet: "OAuth and API keys" },
       { url: "https://docs.composio.dev/toolkits/gmail", title: "Gmail", role: "guide", score: 8, snippet: "Gmail is Google’s email service" },
     ];
-    const ranked = rerankDocs("gmail 401 errors", graphPages, lex, 4);
+    const ranked = rerankDocs("gmail 401 errors", graphPages, lex, 4, [{ slug: "GMAIL" }]);
     expect(ranked[0]?.title).toMatch(/401/);
     expect(ranked[0]?.snippet).toMatch(/access token/i);
   });
@@ -180,6 +180,20 @@ describe("composio graph rag", () => {
     const hit = askApps(graph, chunkPages(pages()), "I need to send an email to a customer");
     expect(hit.apps[0]?.slug).toBe("GMAIL");
     expect(hit.pages.length).toBeGreaterThan(0);
+  });
+
+  test("reranker prefers docs of the top graph app", () => {
+    const ranked = rerankDocs(
+      "create a github issue",
+      [
+        { url: "https://docs.composio.dev/toolkits/jira", title: "What is JQL?", role: "faq", score: 12, snippet: "JQL searches Jira issues" },
+        { url: "https://docs.composio.dev/toolkits/github", title: "How do I create an issue?", role: "faq", score: 4, snippet: "Use GITHUB_CREATE_ISSUE" },
+      ],
+      [],
+      2,
+      [{ slug: "GITHUB" }, { slug: "JIRA" }],
+    );
+    expect(ranked[0]?.url).toMatch(/github/i);
   });
 
   test("attachApps binds recommend_app and debug_docs", async () => {
