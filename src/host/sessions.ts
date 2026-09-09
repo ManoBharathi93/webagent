@@ -8,6 +8,9 @@ import { Room } from "./room.ts";
 
 const CAP = 64;
 const ID_OK = /^[a-zA-Z0-9_-]{1,80}$/;
+/** New caller-chosen ids must be unguessable. MCP mints s1, s2, … */
+const STRONG_ID = /^[a-zA-Z0-9_-]{16,80}$/;
+const MCP_SEQ = /^s\d+$/;
 
 export const SESSION_COOKIE = "wa_session";
 
@@ -21,16 +24,19 @@ export class Sessions {
     readonly lobby: Room,
   ) {}
 
-  /** Reuse id if this chat already exists; otherwise start a new context. */
+  /** Reuse a known chat. New rooms get a 128-bit id unless the caller sent a strong one. */
   open(id?: string | null): { id: string; room: Room } {
-    const sid = sanitize(id) || this.nextId();
-    let room = this.rooms.get(sid);
-    if (!room) {
-      room = cloneRoom(this.harness, this.lobby);
-      this.rooms.set(sid, room);
-      this.order.push(sid);
-      this.evict();
+    const asked = sanitize(id);
+    if (asked && this.rooms.has(asked)) {
+      const room = this.rooms.get(asked)!;
+      this.last = room;
+      return { id: asked, room };
     }
+    const sid = asked && isStrongId(asked) ? asked : this.nextId();
+    const room = cloneRoom(this.harness, this.lobby);
+    this.rooms.set(sid, room);
+    this.order.push(sid);
+    this.evict();
     this.last = room;
     return { id: sid, room };
   }
@@ -82,7 +88,12 @@ export function sanitize(id?: string | null): string | undefined {
   return ID_OK.test(s) ? s : undefined;
 }
 
-/** Body, then query (unless opts.query is false), then X-Session-Id / Mcp-Session-Id, then wa_session cookie. */
+function isStrongId(id: string): boolean {
+  return STRONG_ID.test(id) && !MCP_SEQ.test(id);
+}
+
+/** Body, then query (unless opts.query is false), then X-Session-Id, then wa_session cookie.
+ *  MCP session ids are not chat rooms. */
 export function readSessionId(
   req: Request,
   bodySession?: string | null,
@@ -98,7 +109,7 @@ export function readSessionId(
       /* ignore */
     }
   }
-  const fromHeader = sanitize(req.headers.get("x-session-id") || req.headers.get("mcp-session-id"));
+  const fromHeader = sanitize(req.headers.get("x-session-id"));
   if (fromHeader) return fromHeader;
   return sanitize(cookieValue(req, SESSION_COOKIE));
 }

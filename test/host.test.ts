@@ -5,6 +5,8 @@ import { host } from "../src/host/host.ts";
 import { listen } from "../src/host/listen.ts";
 import { Room } from "../src/host/room.ts";
 
+delete process.env.WEBAGENT_PUBLIC_URL;
+
 const HUMAN_TAB = {
   Accept: "text/html,application/xhtml+xml",
   "User-Agent": "Mozilla/5.0 Chrome/120",
@@ -96,8 +98,8 @@ describe("host route + shared room", () => {
     expect(text).toContain("session");
     expect(text).not.toContain("initialize");
     expect(text).toContain("Do not open /mcp");
-    expect(card.headers.get("x-session-id")).toBeTruthy();
-    expect(card.headers.get("set-cookie")).toContain("wa_session=");
+    expect(card.headers.get("x-session-id")).toBeNull();
+    expect(card.headers.get("set-cookie")).toBeNull();
     expect(card.headers.get("access-control-allow-origin")).toBe("*");
     expect(card.headers.get("link")).toContain("llms.txt");
   });
@@ -204,16 +206,16 @@ describe("host route + shared room", () => {
       new Request("http://t/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: "my name is Ada", session: "chat-ada" }),
+        body: JSON.stringify({ text: "my name is Ada", session: "chat-ada-session01" }),
       }),
     );
     const one = (await first.json()) as { session: string; runId: string };
-    expect(one.session).toBe("chat-ada");
+    expect(one.session).toBe("chat-ada-session01");
     const second = await fetchFn(
       new Request("http://t/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: "what is my name?", session: "chat-ada" }),
+        body: JSON.stringify({ text: "what is my name?", session: "chat-ada-session01" }),
       }),
     );
     const two = (await second.json()) as { lastText: string; runId: string };
@@ -223,7 +225,7 @@ describe("host route + shared room", () => {
       new Request("http://t/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: "what is my name?", session: "chat-bob" }),
+        body: JSON.stringify({ text: "what is my name?", session: "chat-bob-session01" }),
       }),
     );
     const three = (await fresh.json()) as { runId: string };
@@ -234,7 +236,13 @@ describe("host route + shared room", () => {
     const h = new Harness();
     const room = new Room(h);
     const fetchFn = host(h, room, "https://agent.example");
-    const hello = await fetchFn(new Request("http://t/", { headers: { "User-Agent": "curl/8" } }));
+    const hello = await fetchFn(
+      new Request("http://t/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "User-Agent": "curl/8" },
+        body: JSON.stringify({ text: "my name is Ada" }),
+      }),
+    );
     const sid = hello.headers.get("x-session-id") ?? "";
     expect(sid).toBeTruthy();
     const cookie = hello.headers.get("set-cookie") ?? "";
@@ -244,24 +252,24 @@ describe("host route + shared room", () => {
       new Request("http://t/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json", Cookie: `wa_session=${sid}` },
-        body: JSON.stringify({ text: "my name is Ada" }),
+        body: JSON.stringify({ text: "what is my name?" }),
       }),
     );
     const one = (await first.json()) as { session: string; runId: string; lastText: string };
     expect(one.session).toBe(sid);
-    expect(one.lastText).toContain("my name is Ada");
+    expect(one.lastText).toContain("what is my name?");
 
     const second = await fetchFn(
       new Request("http://t/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Session-Id": sid },
-        body: JSON.stringify({ text: "what is my name?" }),
+        body: JSON.stringify({ text: "say it again" }),
       }),
     );
     const two = (await second.json()) as { session: string; runId: string; lastText: string };
     expect(two.session).toBe(sid);
     expect(two.runId).toBe(one.runId);
-    expect(two.lastText).toContain("what is my name?");
+    expect(two.lastText).toContain("say it again");
     expect(sid.length).toBeGreaterThan(20);
     expect(sid).not.toMatch(/^c\d+$/);
   });
@@ -273,16 +281,50 @@ describe("host route + shared room", () => {
     const card = await fetchFn(new Request("http://t/llms.txt?session=attacker-room", { headers: { "User-Agent": "curl/8" } }));
     const text = await card.text();
     expect(text).not.toContain("attacker-room");
-    const sid = card.headers.get("x-session-id") ?? "";
-    expect(sid).toBeTruthy();
-    expect(sid).not.toBe("attacker-room");
-    expect(text).toContain(sid);
+    expect(card.headers.get("x-session-id")).toBeNull();
 
     const home = await fetchFn(
       new Request("http://t/?session=attacker-room", { headers: { Accept: "*/*", "User-Agent": "curl/8" } }),
     );
     expect(await home.text()).not.toContain("attacker-room");
-    expect(home.headers.get("x-session-id")).not.toBe("attacker-room");
+    expect(home.headers.get("x-session-id")).toBeNull();
+  });
+
+  test("Mcp-Session-Id and short ids are not chat rooms", async () => {
+    const h = new Harness();
+    const room = new Room(h);
+    const fetchFn = host(h, room);
+    const a = await fetchFn(
+      new Request("http://t/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Mcp-Session-Id": "s1" },
+        body: JSON.stringify({ text: "one" }),
+      }),
+    );
+    const b = await fetchFn(
+      new Request("http://t/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Mcp-Session-Id": "s1" },
+        body: JSON.stringify({ text: "two" }),
+      }),
+    );
+    const one = (await a.json()) as { session: string; runId: string };
+    const two = (await b.json()) as { session: string; runId: string };
+    expect(one.session).not.toBe("s1");
+    expect(two.session).not.toBe("s1");
+    expect(one.session).not.toBe(two.session);
+    expect(one.runId).not.toBe(two.runId);
+
+    const weak = await fetchFn(
+      new Request("http://t/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: "weak", session: "s1" }),
+      }),
+    );
+    const w = (await weak.json()) as { session: string };
+    expect(w.session).not.toBe("s1");
+    expect(w.session.length).toBeGreaterThan(20);
   });
 
   test("malformed wa_session cookie is ignored", async () => {

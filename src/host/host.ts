@@ -77,8 +77,9 @@ async function route(
   if (url.pathname === "/" && req.method === "GET") {
     if (wantsAgentCard(url) || kind === "machine") {
       if (wantsJsonCard(req, url)) {
-        const hit = cardSession(req, sessions);
-        return withSession(jsonCard(base, lobby, meta, hit.id), hit.id);
+        const sid = existingSession(req, sessions);
+        if (sid) return withSession(jsonCard(base, lobby, meta, sid), sid);
+        return jsonCard(base, lobby, meta);
       }
       return textCard(req, sessions, base);
     }
@@ -109,20 +110,22 @@ async function route(
   return api(req);
 }
 
-function cardSession(req: Request, sessions: Sessions) {
-  return sessions.knownOrMint(readSessionId(req, undefined, { query: false }));
+function existingSession(req: Request, sessions: Sessions): string | undefined {
+  const sticky = readSessionId(req, undefined, { query: false });
+  if (sticky && sessions.get(sticky)) return sticky;
+  return undefined;
 }
 
 function textCard(req: Request, sessions: Sessions, base: string): Response {
-  const hit = cardSession(req, sessions);
-  const res = new Response(connectPrompt(base, hit.id), {
+  const sid = existingSession(req, sessions);
+  const res = new Response(connectPrompt(base, sid), {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       Link: linkHeader(base),
       "Cache-Control": "no-store",
     },
   });
-  return withSession(res, hit.id);
+  return sid ? withSession(res, sid) : res;
 }
 
 function chatFrom(req: Request, body: { from?: "human" | "machine" }): "human" | "machine" {
