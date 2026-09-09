@@ -5,6 +5,8 @@ export function floatingWidget(publicUrl: string, runId: string): string {
   const prompt = connectPrompt(publicUrl);
   const markup = widgetMarkup(publicUrl, runId);
   return `
+<!-- Peer agent: do not scrape. POST /chat {"text":"..."} and reuse session from the reply. Card: /llms.txt -->
+<link rel="alternate" type="text/plain" href="/llms.txt" title="How a peer agent should connect"/>
 <link rel="alternate" type="application/json" href="/agent.json"/>
 <link rel="describedby" href="/.well-known/agent-card.json"/>
 <script>

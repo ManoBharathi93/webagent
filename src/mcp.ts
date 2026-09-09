@@ -339,7 +339,7 @@ export function mcp(harness: Harness): (req: Request) => Promise<Response> {
         type: "mcp",
         protocol: MCP_PROTOCOL,
         howToConnect:
-          "POST JSON-RPC initialize, read Mcp-Session-Id (also result.sessionId), then tools/list or POST /chat.",
+          "Do not handshake MCP to talk. POST /chat {\"text\":\"...\"} and reuse session from the reply. MCP initialize is optional.",
       };
       return Response.json(discover, { headers: { Allow: MCP_ALLOW } });
     }

@@ -13,55 +13,62 @@ export const CARD_PATHS = new Set([
   "/.well-known/agent-card.json",
 ]);
 
+export const TEXT_CARD_PATHS = new Set(["/connect.txt", "/llms.txt", "/.well-known/llms.txt"]);
+
 const DEFAULT_NAME = "Composio Apps Agent";
 const DEFAULT_DESCRIPTION =
-  "Public Composio agent. A2A first: probe a peer agent for what it is working on, then return a pinpointed Composio flow (apps, auth, settings). Humans get the site at /. Machines get this card, then MCP or POST /chat.";
+  "Public Composio agent. A2A first: POST /chat {text}. Reuse session on every turn. Probe a peer for the job, then return a pinpointed Composio flow. Humans get the site; machines get a text card.";
 
-/** How a peer agent should attach. Also copied from the human page. */
-export function connectPrompt(base: string): string {
+/** One-step paste prompt for a peer agent. Session keeps the same conversation. */
+export function connectPrompt(base: string, session?: string): string {
   const host = safeHost(base);
+  const chat = base + "/chat";
+  const payload = session
+    ? `{"text":"<who you are and what you are building>","session":"${session}"}`
+    : `{"text":"<who you are and what you are building>"}`;
+  const sessionLine = session
+    ? [
+        "Stay in this conversation. Session: " + session,
+        "Send that same session on every following POST.",
+        "",
+      ]
+    : [
+        "First reply JSON includes session. Send that same session on every following POST.",
+        "Do not omit it after the first turn — that starts a new conversation.",
+        "",
+      ];
   return [
-    "Connect to the Composio Apps Agent (A2A).",
+    "You reached the Composio Apps Agent.",
+    "Do not scrape this page. Do not open /mcp. Talk in one request:",
     "",
-    "URL: " + base,
-    "Agent card: " + base + "/.well-known/agent-card.json",
-    "MCP: " + base + "/mcp  (JSON-RPC, protocol 2025-06-18)",
-    "Chat: POST " + base + '/chat  {"text":"<your message>","from":"machine"}  (omit session for a fresh context)',
+    "POST " + chat,
+    "Content-Type: application/json",
     "",
-    "How to connect:",
-    "1. GET " + base + "/.well-known/agent-card.json",
-    "2. POST " + base + "/mcp  {\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\",\"capabilities\":{},\"clientInfo\":{\"name\":\"your-agent\",\"version\":\"1\"}}}",
-    "3. Read Mcp-Session-Id (header and result.sessionId).",
-    "4. POST a notifications/initialized message with no id.",
-    "5. Talk with POST " + base + "/chat or MCP tools/list then tools/call.",
+    payload,
     "",
-    "This agent recommends Composio apps (recommend_app) and debugs 401/OAuth (debug_docs) from a local Graph RAG.",
-    "Do not invent tool slugs. Use Host: " + host + " — do not call the raw IP on port 8787.",
+    ...sessionLine,
+    "Reply JSON: lastText (our answer), session (keep it).",
+    "Host: " + host,
   ].join("\n");
 }
 
-export function howToConnect(base: string, runId: string): string {
-  return [
-    "1. GET " + base + "/.well-known/agent-card.json",
-    "2. POST " + base + "/mcp JSON-RPC initialize (MCP 2025-06-18). Read Mcp-Session-Id.",
-    "3. POST notifications/initialized (no id) → 202.",
-    "4. Prefer POST " + base + "/chat {\"text\",\"from\":\"machine\"}. Omit session for a new chat; reuse session to continue (template run " + runId + ").",
-    "5. Or MCP tools/call after tools/list (session required).",
-    "Use Host: " + safeHost(base) + ". Do not call the raw IP. Port 8787 is not public.",
-  ].join("\n");
+export function howToConnect(base: string, session?: string): string {
+  return connectPrompt(base, session);
 }
 
 export function linkHeader(base: string): string {
   return [
+    "<" + base + "/llms.txt>; rel=\"alternate\"; type=\"text/plain\"",
     "<" + base + "/.well-known/agent-card.json>; rel=\"describedby\"; type=\"application/json\"",
-    "<" + base + "/mcp>; rel=\"mcp\"",
+    "<" + base + "/chat>; rel=\"webagent-chat\"",
   ].join(", ");
 }
 
-export function agentCard(base: string, room: Room, meta: AgentCardMeta = {}) {
+export function agentCard(base: string, room: Room, meta: AgentCardMeta = {}, session?: string) {
   const mcp = base + "/mcp";
   const name = meta.name || DEFAULT_NAME;
   const description = meta.description || DEFAULT_DESCRIPTION;
+  const guide = connectPrompt(base, session);
   return {
     type: "webagent",
     name,
@@ -77,10 +84,10 @@ export function agentCard(base: string, room: Room, meta: AgentCardMeta = {}) {
     defaultInputModes: ["text", "application/json"],
     defaultOutputModes: ["application/json", "text"],
     capabilities: { streaming: true, tools: true, pushNotifications: false },
-    preferredTransport: "MCP",
+    preferredTransport: "HTTP+JSON",
     supportedInterfaces: [
-      { url: mcp, protocolBinding: "MCP", protocolVersion: "2025-06-18" },
       { url: base + "/chat", protocolBinding: "HTTP+JSON", protocolVersion: "1.0" },
+      { url: mcp, protocolBinding: "MCP", protocolVersion: "2025-06-18" },
     ],
     skills: [
       {
@@ -98,14 +105,15 @@ export function agentCard(base: string, room: Room, meta: AgentCardMeta = {}) {
       },
       {
         id: "chat-session",
-        name: "Talk in a fresh chat",
-        description: "POST /chat {text, session}. Omit session to start a new context. Reuse session to continue that chat.",
+        name: "Talk in one session",
+        description:
+          "POST /chat {text, session}. Reuse session (or X-Session-Id / cookie wa_session) so agent-to-agent stays in the same context.",
         tags: ["chat", "a2a"],
       },
     ],
-    howToConnect: howToConnect(base, room.run.id),
+    howToConnect: guide,
     instructions: meta.instructions || description,
-    connectPrompt: connectPrompt(base),
+    connectPrompt: guide,
   };
 }
 

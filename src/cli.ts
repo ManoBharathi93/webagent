@@ -101,13 +101,13 @@ switch (args[0]) {
       card: {
         name: "Composio Apps Agent",
         description:
-          "Public Composio agent. A2A first: probe a peer agent for what it is working on, then return a pinpointed flow (apps, auth, settings) that makes Composio the obvious choice. Humans get the site at /. Machines use this card, MCP, or POST /chat.",
+          "Public Composio agent. A2A first: POST /chat {text} and reuse session. Probe a peer for the job, then return a pinpointed flow that makes Composio the obvious choice. Humans get the site; machines get a text card.",
         instructions: appsInstruction(),
       },
     });
     console.error(`composio agent ${hosted.url}`);
     console.error(`  human   ${hosted.url}/`);
-    console.error(`  machine ${hosted.url}/mcp  run ${hosted.room.run.id}`);
+    console.error(`  machine POST ${hosted.url}/chat  {"text":"..."}  (reuse session)`);
     console.error(`  local   http://127.0.0.1:${port}/`);
     await new Promise(() => {});
     break;
@@ -118,7 +118,7 @@ switch (args[0]) {
     const hosted = listen(h, { port });
     console.error(`agent ${hosted.url}`);
     console.error(`  human   ${hosted.url}/`);
-    console.error(`  machine ${hosted.url}/mcp  run ${hosted.room.run.id}`);
+    console.error(`  machine POST ${hosted.url}/chat  {"text":"..."}  (reuse session)`);
     await new Promise(() => {});
     break;
   }

@@ -5,8 +5,20 @@ import { host } from "../src/host/host.ts";
 import { listen } from "../src/host/listen.ts";
 import { Room } from "../src/host/room.ts";
 
+const HUMAN_TAB = {
+  Accept: "text/html,application/xhtml+xml",
+  "User-Agent": "Mozilla/5.0 Chrome/120",
+  "Sec-Fetch-Dest": "document",
+  "Sec-Fetch-Mode": "navigate",
+  "Sec-Fetch-User": "?1",
+};
+
 describe("host detect", () => {
-  test("browser HTML is human", () => {
+  test("real browser tab is human", () => {
+    expect(clientKind(new Request("http://t/", { headers: HUMAN_TAB }))).toBe("human");
+  });
+
+  test("document navigation without user activation is machine", () => {
     expect(
       clientKind(
         new Request("http://t/", {
@@ -17,7 +29,34 @@ describe("host detect", () => {
           },
         }),
       ),
-    ).toBe("human");
+    ).toBe("machine");
+  });
+
+  test("Cursor / Playwright / headless look like a tab but are machine", () => {
+    expect(
+      clientKind(
+        new Request("http://t/", {
+          headers: {
+            ...HUMAN_TAB,
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Cursor/1.0 Chrome/120 Electron/32.0",
+          },
+        }),
+      ),
+    ).toBe("machine");
+    expect(
+      clientKind(
+        new Request("http://t/", {
+          headers: { ...HUMAN_TAB, "User-Agent": "Mozilla/5.0 HeadlessChrome/120" },
+        }),
+      ),
+    ).toBe("machine");
+    expect(
+      clientKind(
+        new Request("http://t/", {
+          headers: { Accept: "text/html", "User-Agent": "Playwright", "Sec-Fetch-Dest": "document" },
+        }),
+      ),
+    ).toBe("machine");
   });
 
   test("MCP and bots are machine", () => {
@@ -34,40 +73,59 @@ describe("host detect", () => {
 });
 
 describe("host route + shared room", () => {
-  test("human GET / is HTML; machine GET / is the agent card", async () => {
+  test("human GET / is HTML; machine GET / is a text card", async () => {
     const h = new Harness();
     const room = new Room(h);
     const fetchFn = host(h, room, "https://agent.example");
-    const page = await fetchFn(
-      new Request("http://t/", { headers: { Accept: "text/html", "User-Agent": "Mozilla/5.0", "Sec-Fetch-Dest": "document" } }),
-    );
+    const page = await fetchFn(new Request("http://t/", { headers: HUMAN_TAB }));
     expect(page.headers.get("content-type")).toContain("text/html");
     const html = await page.text();
     expect(html).toContain(room.run.id);
-    expect(html).toContain("/mcp");
     expect(html).toContain("Composio Agent");
     expect(html).toContain("Let your agent talk to");
     expect(html).toContain("Everything your agents");
     expect(html).toContain("wa-fab");
     expect(html).toContain("GET STARTED");
+    expect(html).toContain("POST /chat");
+    expect(html).toContain("/llms.txt");
 
-    const card = await fetchFn(new Request("http://t/", { headers: { Accept: "application/json", "User-Agent": "curl/8" } }));
+    const card = await fetchFn(new Request("http://t/", { headers: { Accept: "*/*", "User-Agent": "curl/8" } }));
+    expect(card.headers.get("content-type")).toContain("text/plain");
+    const text = await card.text();
+    expect(text).toContain("POST https://agent.example/chat");
+    expect(text).toContain("session");
+    expect(text).not.toContain("initialize");
+    expect(text).toContain("Do not open /mcp");
+    expect(card.headers.get("x-session-id")).toBeTruthy();
+    expect(card.headers.get("set-cookie")).toContain("wa_session=");
+    expect(card.headers.get("access-control-allow-origin")).toBe("*");
+    expect(card.headers.get("link")).toContain("llms.txt");
+  });
+
+  test("JSON card only when asked; howToConnect is POST /chat", async () => {
+    const h = new Harness();
+    const room = new Room(h);
+    const fetchFn = host(h, room, "https://agent.example");
+    const card = await fetchFn(
+      new Request("http://t/", { headers: { Accept: "application/json", "User-Agent": "curl/8" } }),
+    );
     const body = (await card.json()) as {
       mcp: string;
       runId: string;
       type: string;
       name: string;
       howToConnect: string;
+      preferredTransport: string;
       skills: { id: string }[];
     };
     expect(body.type).toBe("webagent");
     expect(body.mcp).toBe("https://agent.example/mcp");
     expect(body.runId).toBe(room.run.id);
     expect(body.name).toContain("Composio");
-    expect(body.howToConnect).toContain("initialize");
+    expect(body.preferredTransport).toBe("HTTP+JSON");
+    expect(body.howToConnect).toContain("POST https://agent.example/chat");
+    expect(body.howToConnect).not.toContain("initialize");
     expect(body.skills.some((s) => s.id === "recommend-app")).toBe(true);
-    expect(card.headers.get("access-control-allow-origin")).toBe("*");
-    expect(card.headers.get("link")).toContain("agent-card.json");
   });
 
   test("serves captured composio.dev CSS and logo assets", async () => {
@@ -96,15 +154,14 @@ describe("host route + shared room", () => {
     const body = (await well.json()) as { runId: string; connectPrompt: string };
     expect(body.runId).toBe(room.run.id);
     expect(body.connectPrompt).toContain("POST");
+    expect(body.connectPrompt).not.toContain("initialize");
     const opt = await fetchFn(new Request("http://t/", { method: "OPTIONS", headers: { Origin: "https://ex.com" } }));
     expect(opt.status).toBe(204);
     expect(opt.headers.get("access-control-allow-origin")).toBe("*");
-    const forced = await fetchFn(
-      new Request("http://t/?agent=1", {
-        headers: { Accept: "text/html", "User-Agent": "Mozilla/5.0", "Sec-Fetch-Dest": "document" },
-      }),
-    );
-    expect(forced.headers.get("content-type")).toContain("application/json");
+    const forced = await fetchFn(new Request("http://t/?agent=1", { headers: HUMAN_TAB }));
+    expect(forced.headers.get("content-type")).toContain("text/plain");
+    const jsonForced = await fetchFn(new Request("http://t/?agent=1&format=json", { headers: HUMAN_TAB }));
+    expect(jsonForced.headers.get("content-type")).toContain("application/json");
   });
 
   test("each chat without a session is a fresh context", async () => {
@@ -171,6 +228,40 @@ describe("host route + shared room", () => {
     );
     const three = (await fresh.json()) as { runId: string };
     expect(three.runId).not.toBe(one.runId);
+  });
+
+  test("cookie and X-Session-Id keep the same A2A conversation", async () => {
+    const h = new Harness();
+    const room = new Room(h);
+    const fetchFn = host(h, room, "https://agent.example");
+    const hello = await fetchFn(new Request("http://t/", { headers: { "User-Agent": "curl/8" } }));
+    const sid = hello.headers.get("x-session-id") ?? "";
+    expect(sid).toBeTruthy();
+    const cookie = hello.headers.get("set-cookie") ?? "";
+    expect(cookie).toContain("wa_session=" + sid);
+
+    const first = await fetchFn(
+      new Request("http://t/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: `wa_session=${sid}` },
+        body: JSON.stringify({ text: "my name is Ada" }),
+      }),
+    );
+    const one = (await first.json()) as { session: string; runId: string; lastText: string };
+    expect(one.session).toBe(sid);
+    expect(one.lastText).toContain("my name is Ada");
+
+    const second = await fetchFn(
+      new Request("http://t/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Session-Id": sid },
+        body: JSON.stringify({ text: "what is my name?" }),
+      }),
+    );
+    const two = (await second.json()) as { session: string; runId: string; lastText: string };
+    expect(two.session).toBe(sid);
+    expect(two.runId).toBe(one.runId);
+    expect(two.lastText).toContain("what is my name?");
   });
 
   test("room can wrap an existing run", async () => {

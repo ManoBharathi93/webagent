@@ -9,6 +9,8 @@ import { Room } from "./room.ts";
 const CAP = 64;
 const ID_OK = /^[a-zA-Z0-9_-]{1,80}$/;
 
+export const SESSION_COOKIE = "wa_session";
+
 export class Sessions {
   private readonly rooms = new Map<string, Room>();
   private readonly order: string[] = [];
@@ -64,8 +66,36 @@ export function cloneRoom(harness: Harness, src: Room): Room {
   return new Room(harness, { run });
 }
 
-function sanitize(id?: string | null): string | undefined {
+export function sanitize(id?: string | null): string | undefined {
   if (!id) return undefined;
   const s = id.trim();
   return ID_OK.test(s) ? s : undefined;
+}
+
+/** Body, then query, then X-Session-Id / Mcp-Session-Id, then wa_session cookie. */
+export function readSessionId(req: Request, bodySession?: string | null): string | undefined {
+  const fromBody = sanitize(bodySession);
+  if (fromBody) return fromBody;
+  try {
+    const fromQuery = sanitize(new URL(req.url).searchParams.get("session"));
+    if (fromQuery) return fromQuery;
+  } catch {
+    /* ignore */
+  }
+  const fromHeader = sanitize(req.headers.get("x-session-id") || req.headers.get("mcp-session-id"));
+  if (fromHeader) return fromHeader;
+  return sanitize(cookieValue(req, SESSION_COOKIE));
+}
+
+export function sessionCookie(id: string): string {
+  return `${SESSION_COOKIE}=${id}; Path=/; SameSite=Lax`;
+}
+
+function cookieValue(req: Request, name: string): string | undefined {
+  const raw = req.headers.get("cookie") ?? "";
+  for (const part of raw.split(";")) {
+    const [k, ...rest] = part.trim().split("=");
+    if (k === name) return decodeURIComponent(rest.join("="));
+  }
+  return undefined;
 }
