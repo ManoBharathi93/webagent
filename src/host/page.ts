@@ -97,7 +97,7 @@ export function chatPage(room: Room, publicUrl: string): Response {
     .side h3 { margin: 0 0 .6rem; font-size: 1.15rem; }
     .side ol { margin: 0; padding-left: 1.1rem; color: var(--muted); font-size: .88rem; line-height: 1.55; }
     .side li { margin: .35rem 0; }
-    .toast { position: fixed; bottom: 1.2rem; left: 50%; transform: translateX(-50%); background: #fff; color: #000; padding: .45rem .8rem; font-size: .78rem; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 5; }
+    .toast { position: fixed; bottom: 1.4rem; left: 50%; transform: translateX(-50%); background: #fff; color: #000; padding: .55rem 1rem; font-size: .82rem; font-family: var(--mono); letter-spacing: .04em; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 9; }
     .toast.on { opacity: 1; }
     footer { text-align: center; color: #5c636b; font-size: .75rem; padding: 0 1rem 2.5rem; }
   </style>
@@ -163,9 +163,27 @@ export function chatPage(room: Room, publicUrl: string): Response {
       el.classList.add("on");
       setTimeout(() => el.classList.remove("on"), 1400);
     };
+    const fallbackCopy = (text) => {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      ta.remove();
+      if (!ok) throw new Error("copy");
+    };
     const copy = async (text, ok) => {
-      try { await navigator.clipboard.writeText(text); toast(ok); }
-      catch { toast("Copy failed"); }
+      try {
+        if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(text);
+        else fallbackCopy(text);
+        toast(ok);
+      } catch (e) {
+        try { fallbackCopy(text); toast(ok); }
+        catch { toast("Copy failed — select the URL"); }
+      }
     };
     document.getElementById("copy-url").onclick = () => copy(URL_TEXT, "Link copied");
     document.getElementById("copy-prompt").onclick = () => copy(PROMPT, "Prompt copied");
