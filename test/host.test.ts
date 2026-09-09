@@ -262,6 +262,44 @@ describe("host route + shared room", () => {
     expect(two.session).toBe(sid);
     expect(two.runId).toBe(one.runId);
     expect(two.lastText).toContain("what is my name?");
+    expect(sid.length).toBeGreaterThan(20);
+    expect(sid).not.toMatch(/^c\d+$/);
+  });
+
+  test("machine cards do not adopt a caller-chosen ?session=", async () => {
+    const h = new Harness();
+    const room = new Room(h);
+    const fetchFn = host(h, room, "https://agent.example");
+    const card = await fetchFn(new Request("http://t/llms.txt?session=attacker-room", { headers: { "User-Agent": "curl/8" } }));
+    const text = await card.text();
+    expect(text).not.toContain("attacker-room");
+    const sid = card.headers.get("x-session-id") ?? "";
+    expect(sid).toBeTruthy();
+    expect(sid).not.toBe("attacker-room");
+    expect(text).toContain(sid);
+
+    const home = await fetchFn(
+      new Request("http://t/?session=attacker-room", { headers: { Accept: "*/*", "User-Agent": "curl/8" } }),
+    );
+    expect(await home.text()).not.toContain("attacker-room");
+    expect(home.headers.get("x-session-id")).not.toBe("attacker-room");
+  });
+
+  test("malformed wa_session cookie is ignored", async () => {
+    const h = new Harness();
+    const room = new Room(h);
+    const fetchFn = host(h, room);
+    const res = await fetchFn(
+      new Request("http://t/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: "wa_session=%zz" },
+        body: JSON.stringify({ text: "hello" }),
+      }),
+    );
+    expect(res.ok).toBe(true);
+    const body = (await res.json()) as { session: string; lastText: string };
+    expect(body.session).toBeTruthy();
+    expect(body.lastText).toContain("hello");
   });
 
   test("room can wrap an existing run", async () => {

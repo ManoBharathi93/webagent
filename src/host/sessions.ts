@@ -15,7 +15,6 @@ export class Sessions {
   private readonly rooms = new Map<string, Room>();
   private readonly order: string[] = [];
   last: Room | undefined;
-  private seq = 0;
 
   constructor(
     private readonly harness: Harness,
@@ -36,12 +35,23 @@ export class Sessions {
     return { id: sid, room };
   }
 
+  /** Card/discovery: resume a known session, never adopt an attacker-chosen new id. */
+  knownOrMint(id?: string | null): { id: string; room: Room } {
+    const sid = sanitize(id);
+    if (sid && this.rooms.has(sid)) return this.open(sid);
+    return this.open();
+  }
+
   get(id: string): Room | undefined {
     return this.rooms.get(id);
   }
 
   private nextId(): string {
-    return "c" + ++this.seq;
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    let hex = "";
+    for (const b of bytes) hex += b.toString(16).padStart(2, "0");
+    return "c" + hex;
   }
 
   private evict(): void {
@@ -72,15 +82,21 @@ export function sanitize(id?: string | null): string | undefined {
   return ID_OK.test(s) ? s : undefined;
 }
 
-/** Body, then query, then X-Session-Id / Mcp-Session-Id, then wa_session cookie. */
-export function readSessionId(req: Request, bodySession?: string | null): string | undefined {
+/** Body, then query (unless opts.query is false), then X-Session-Id / Mcp-Session-Id, then wa_session cookie. */
+export function readSessionId(
+  req: Request,
+  bodySession?: string | null,
+  opts: { query?: boolean } = {},
+): string | undefined {
   const fromBody = sanitize(bodySession);
   if (fromBody) return fromBody;
-  try {
-    const fromQuery = sanitize(new URL(req.url).searchParams.get("session"));
-    if (fromQuery) return fromQuery;
-  } catch {
-    /* ignore */
+  if (opts.query !== false) {
+    try {
+      const fromQuery = sanitize(new URL(req.url).searchParams.get("session"));
+      if (fromQuery) return fromQuery;
+    } catch {
+      /* ignore */
+    }
   }
   const fromHeader = sanitize(req.headers.get("x-session-id") || req.headers.get("mcp-session-id"));
   if (fromHeader) return fromHeader;
@@ -95,7 +111,13 @@ function cookieValue(req: Request, name: string): string | undefined {
   const raw = req.headers.get("cookie") ?? "";
   for (const part of raw.split(";")) {
     const [k, ...rest] = part.trim().split("=");
-    if (k === name) return decodeURIComponent(rest.join("="));
+    if (k === name) {
+      try {
+        return decodeURIComponent(rest.join("="));
+      } catch {
+        return undefined;
+      }
+    }
   }
   return undefined;
 }

@@ -48,9 +48,9 @@ async function route(
 
   if (url.pathname === "/who") return Response.json({ kind, runId: lobby.run.id });
   if (TEXT_CARD_PATHS.has(url.pathname)) return textCard(req, sessions, base);
-  if (CARD_PATHS.has(url.pathname)) return jsonCard(base, lobby, meta, readSessionId(req));
+  if (CARD_PATHS.has(url.pathname)) return jsonCard(base, lobby, meta);
   if (url.pathname === "/session" && (req.method === "POST" || req.method === "GET")) {
-    const hit = sessions.open(readSessionId(req));
+    const hit = sessions.knownOrMint(readSessionId(req, undefined, { query: false }));
     return withSession(Response.json({ session: hit.id, runId: hit.room.run.id }), hit.id);
   }
   if (url.pathname === "/live") {
@@ -77,7 +77,7 @@ async function route(
   if (url.pathname === "/" && req.method === "GET") {
     if (wantsAgentCard(url) || kind === "machine") {
       if (wantsJsonCard(req, url)) {
-        const hit = sessions.open(readSessionId(req));
+        const hit = cardSession(req, sessions);
         return withSession(jsonCard(base, lobby, meta, hit.id), hit.id);
       }
       return textCard(req, sessions, base);
@@ -109,8 +109,12 @@ async function route(
   return api(req);
 }
 
+function cardSession(req: Request, sessions: Sessions) {
+  return sessions.knownOrMint(readSessionId(req, undefined, { query: false }));
+}
+
 function textCard(req: Request, sessions: Sessions, base: string): Response {
-  const hit = sessions.open(readSessionId(req));
+  const hit = cardSession(req, sessions);
   const res = new Response(connectPrompt(base, hit.id), {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
