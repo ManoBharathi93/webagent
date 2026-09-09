@@ -367,7 +367,7 @@ export function mcp(harness: Harness): (req: Request) => Promise<Response> {
       const res = await rpc(req, msg.id, {
         protocolVersion: MCP_PROTOCOL,
         capabilities: { tools: { listChanged: false } },
-        serverInfo: { name: "webagent", version: "0.4.0" },
+        serverInfo: { name: "composio", version: "1.0" },
         sessionId: sid,
       });
       res.headers.set("Mcp-Session-Id", sid);

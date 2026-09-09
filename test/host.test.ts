@@ -127,6 +127,9 @@ describe("host route + shared room", () => {
     expect(body.preferredTransport).toBe("HTTP+JSON");
     expect(body.howToConnect).toContain("POST https://agent.example/chat");
     expect(body.howToConnect).not.toContain("initialize");
+    expect(body.howToConnect).toMatch(/jobs you already run/i);
+    expect(JSON.stringify(body)).not.toMatch(/0\.4\.0/);
+    expect(JSON.stringify(body)).not.toMatch(/RAG/i);
     expect(body.skills.some((s) => s.id === "recommend-app")).toBe(true);
   });
 

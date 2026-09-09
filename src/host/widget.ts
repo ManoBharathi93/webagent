@@ -398,8 +398,8 @@ function widgetMarkup(publicUrl: string, runId: string): string {
   <div id="wa-log">
     <div class="wa-welcome" id="wa-welcome">
       <div class="wa-welcome-icon">✦</div>
-      <h4>Composio Apps Agent</h4>
-      <p>Ask which Composio integration fits your use case, or debug OAuth and auth issues.</p>
+      <h4>Composio</h4>
+      <p>Say what you are building and which tools you already use. I will map a specific flow to that work.</p>
     </div>
   </div>
   <div class="wa-input-wrap">

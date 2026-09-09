@@ -13,7 +13,7 @@ if (!args[0] || args[0] === "help") {
   console.error("  webagent serve [addr]        public HTTPS host (default :8787)");
   console.error("  webagent ingest <url>        crawl a site, build flows, attach a run");
   console.error("  webagent pair <url>          two agents: site seller + buyer (Cursor SDK)");
-  console.error("  webagent apps [addr]         Composio Graph RAG host (local corpus)");
+  console.error("  webagent apps [addr]         Composio apps host (local corpus)");
   process.exit(args[0] ? 0 : 2);
 }
 
@@ -75,7 +75,7 @@ switch (args[0]) {
     break;
   }
   case "apps": {
-    const { attachApps, loadAppsPack, appsInstruction } = await import("./apps/index.ts");
+    const { attachApps, loadAppsPack, appsPublicDescription, appsPublicInstructions } = await import("./apps/index.ts");
     const { openaiModel } = await import("./models.ts");
     const addr = args[1] || ":8787";
     const port = Number(addr.replace(/^.*:/, "")) || 8787;
@@ -99,10 +99,9 @@ switch (args[0]) {
       model: hasKey ? "openai" : "echo",
       publicUrl,
       card: {
-        name: "Composio Apps Agent",
-        description:
-          "Public Composio agent. A2A first: POST /chat {text} and reuse session. Probe a peer for the job, then return a pinpointed flow that makes Composio the obvious choice. Humans get the site; machines get a text card.",
-        instructions: appsInstruction(),
+        name: "Composio",
+        description: appsPublicDescription(),
+        instructions: appsPublicInstructions(),
       },
     });
     console.error(`composio agent ${hosted.url}`);
