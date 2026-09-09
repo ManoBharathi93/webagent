@@ -135,7 +135,9 @@ export function floatingWidget(publicUrl: string, runId: string): string {
       await send();
     };
     input.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter" || e.shiftKey) return;
+      if (e.shiftKey) return;
+      const enter = e.key === "Enter" || e.key === "Return" || e.code === "Enter" || e.code === "NumpadEnter" || e.keyCode === 13;
+      if (!enter) return;
       e.preventDefault();
       send();
     });
@@ -362,13 +364,13 @@ function widgetMarkup(publicUrl: string, runId: string): string {
     transition: border-color .2s;
   }
   .wa-input-box:focus-within { border-color: rgba(255,255,255,.15); }
-  .wa-input-box textarea {
+  .wa-input-box textarea, .wa-input-box input {
     flex: 1; background: transparent; border: 0; color: #fafafa;
     padding: .75rem .875rem; outline: none;
     font: inherit; font-size: .875rem; line-height: 1.5;
     resize: none; min-height: 2.75rem; max-height: 8rem;
   }
-  .wa-input-box textarea::placeholder { color: #3f3f46; }
+  .wa-input-box textarea::placeholder, .wa-input-box input::placeholder { color: #3f3f46; }
   .wa-input-box button {
     width: 2.25rem; height: 2.25rem; margin: .25rem .25rem .25rem 0;
     border-radius: 8px; border: 0;
@@ -423,7 +425,7 @@ function widgetMarkup(publicUrl: string, runId: string): string {
   </div>
   <div class="wa-input-wrap">
     <form class="wa-input-box" id="wa-form">
-      <textarea id="wa-text" rows="1" placeholder="Ask a question..." autocomplete="off"></textarea>
+      <input id="wa-text" type="text" placeholder="Ask a question..." autocomplete="off" enterkeyhint="send"/>
       <button type="submit" aria-label="Send">
         <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z"/></svg>
       </button>
