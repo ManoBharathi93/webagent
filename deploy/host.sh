@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Run this on the EC2 host. Checks out the apps branch and starts systemd.
+# Run this on the EC2 host. Starts systemd for a tree already in $ROOT,
+# or clones the apps branch when GitHub credentials are available.
 set -euo pipefail
 
 ROOT="${WEBAGENT_ROOT:-/opt/webagent}"
@@ -45,30 +46,47 @@ sudo ln -sfn "$BUN" /usr/local/bin/bun
 
 sudo mkdir -p "$ROOT"
 sudo chown "$RUN_USER:$(id -gn)" "$ROOT"
-if [ ! -d "$ROOT/.git" ]; then
+
+have_tree() {
+  [ -f "$ROOT/src/cli.ts" ] && [ -f "$ROOT/deploy/apps.service" ]
+}
+
+if [ ! -d "$ROOT/.git" ] && ! have_tree; then
   tmp="$(mktemp -d)"
   git clone "$REPO" "$tmp/webagent"
   if [ -f "$ROOT/.env" ]; then
     cp "$ROOT/.env" "$tmp/webagent/.env"
     chmod 600 "$tmp/webagent/.env"
   fi
-  # Keep an existing .env; replace everything else.
   find "$ROOT" -mindepth 1 -maxdepth 1 ! -name '.env' -exec rm -rf {} +
   shopt -s dotglob
   mv "$tmp/webagent"/* "$ROOT/"
   shopt -u dotglob
   rm -rf "$tmp"
 fi
+
 cd "$ROOT"
-git fetch origin "$BRANCH"
-git checkout "$BRANCH"
-git pull --ff-only origin "$BRANCH"
+if [ -d .git ]; then
+  if git fetch origin "$BRANCH"; then
+    git checkout "$BRANCH"
+    git pull --ff-only origin "$BRANCH" || true
+  else
+    echo "git remote unavailable — using the tree already in $ROOT"
+  fi
+fi
+
+if ! have_tree; then
+  echo "missing $ROOT/src/cli.ts — copy the repo with deploy/push.sh or clone with GitHub credentials"
+  exit 1
+fi
+
 bun install
 
 if [ ! -f "$ROOT/.env" ]; then
   echo "missing $ROOT/.env — write OPENAI_API_KEY and WEBAGENT_PUBLIC_URL, then rerun"
   exit 1
 fi
+chmod 600 "$ROOT/.env"
 
 sudo cp "$ROOT/deploy/apps.service" /etc/systemd/system/webagent-apps.service
 sudo sed -i "s|^User=.*|User=$RUN_USER|" /etc/systemd/system/webagent-apps.service
