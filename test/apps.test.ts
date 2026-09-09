@@ -1,0 +1,124 @@
+import { describe, expect, test } from "bun:test";
+import { attachApps } from "../src/apps/attach.ts";
+import { buildGraph } from "../src/apps/graph.ts";
+import { kindOf, useFromTool } from "../src/apps/kind.ts";
+import { parseCatalog, parseAppPage } from "../src/apps/parse.ts";
+import { appsInstruction } from "../src/apps/prompt.ts";
+import { queryGraph } from "../src/apps/query.ts";
+import { Harness } from "../src/harness.ts";
+import { saveCorpus, type CorpusPage } from "../src/site/corpus.ts";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+const CATALOG = `
+# Toolkits
+## All Toolkits
+| Toolkit | Slug | Tools | Triggers | Auth | Managed App |
+| --- | --- | --- | --- | --- | --- |
+| Gmail | \`GMAIL\` | 63 | 2 | OAUTH2 | Yes |
+| GitHub | \`GITHUB\` | 80 | 10 | OAUTH2 | Yes |
+| Slack | \`SLACK\` | 40 | 4 | OAUTH2 | Yes |
+`;
+
+const GMAIL: CorpusPage = {
+  url: "https://docs.composio.dev/toolkits/gmail",
+  title: "Gmail",
+  description: "Gmail email toolkit",
+  headings: ["Gmail", "Frequently Asked Questions", "Why am I getting 401 errors on tool calls?"],
+  text: [
+    "Gmail is Google’s email service for agents.",
+    "",
+    "- Category: email",
+    "- Auth: OAUTH2",
+    "- Tools: 63",
+    "- Triggers: 2",
+    "- Slug: `GMAIL`",
+    "",
+    "## Frequently Asked Questions",
+    "",
+    "### Why am I getting 401 errors on tool calls?",
+    "",
+    "The user's access token is no longer valid. Re-authenticating the user typically resolves this.",
+    "",
+    "## Tools",
+    "",
+    "Use `GMAIL_SEND_EMAIL` to send mail. Use `GMAIL_FETCH_EMAILS` to read the inbox.",
+  ].join("\n"),
+  status: 200,
+};
+
+const AUTH: CorpusPage = {
+  url: "https://docs.composio.dev/docs/authentication.md",
+  title: "Authentication",
+  description: "OAuth and API keys",
+  headings: ["Authentication"],
+  text: "Composio-managed auth is the default. Agents connect accounts at runtime. OAuth2 and API_KEY are supported.",
+  status: 200,
+};
+
+function pages(): CorpusPage[] {
+  return [
+    {
+      url: "https://docs.composio.dev/toolkits.md",
+      title: "Toolkits",
+      description: "Catalog",
+      headings: ["All Toolkits"],
+      text: CATALOG,
+      status: 200,
+    },
+    GMAIL,
+    AUTH,
+  ];
+}
+
+describe("composio graph rag", () => {
+  test("catalog parse keeps slug and auth", () => {
+    const rows = parseCatalog(CATALOG);
+    expect(rows.some((r) => r.slug === "GMAIL")).toBe(true);
+    expect(kindOf("GMAIL", "email")).toBe("email");
+    expect(useFromTool("GMAIL_SEND_EMAIL")).toMatch(/send email/);
+  });
+
+  test("app page yields FAQ and send-email use", () => {
+    const parsed = parseAppPage(GMAIL)!;
+    expect(parsed.kind).toBe("email");
+    expect(parsed.faqs?.some((f) => /401/.test(f.q))).toBe(true);
+    expect(parsed.uses?.some((u) => /send email/i.test(u))).toBe(true);
+  });
+
+  test("query send email ranks Gmail and not a catalog dump", () => {
+    const graph = buildGraph("https://docs.composio.dev", pages());
+    const hit = queryGraph(graph, "I need to send an email to a customer");
+    expect(hit.kinds).toContain("email");
+    expect(hit.apps[0]?.slug).toBe("GMAIL");
+    expect(hit.apps[0]?.why.some((w) => /use:|kind:/i.test(w))).toBe(true);
+    expect(hit.apps.length).toBeLessThanOrEqual(6);
+  });
+
+  test("query 401 on gmail hits the FAQ page", () => {
+    const graph = buildGraph("https://docs.composio.dev", pages());
+    const hit = queryGraph(graph, "gmail 401 errors on tool calls");
+    expect(hit.pages.some((p) => /401/.test(p.title + p.snippet))).toBe(true);
+  });
+
+  test("attachApps binds recommend_app and debug_docs", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "composio-"));
+    try {
+      saveCorpus(dir, "https://docs.composio.dev", pages());
+      const graph = buildGraph("https://docs.composio.dev", pages());
+      const h = new Harness();
+      const { loadCorpus } = await import("../src/site/corpus.ts");
+      const pack = loadCorpus(dir);
+      const run = attachApps(h, pack, { model: "echo", graph });
+      expect(run.listTools().some((t) => t.name === "recommend_app")).toBe(true);
+      expect(run.listTools().some((t) => t.name === "debug_docs")).toBe(true);
+      expect(appsInstruction()).toMatch(/recommend_app/);
+      const rec = run.tools.find((t) => t.name === "recommend_app")!;
+      const out = await rec.call({ request: "create a github issue" });
+      expect(JSON.stringify(out)).toMatch(/GITHUB|git/i);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

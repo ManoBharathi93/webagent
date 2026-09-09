@@ -12,6 +12,7 @@ if (!args[0] || args[0] === "help") {
   console.error("  webagent serve [addr]        public HTTPS host (default :8787)");
   console.error("  webagent ingest <url>        crawl a site, build flows, attach a run");
   console.error("  webagent pair <url>          two agents: site seller + buyer (Cursor SDK)");
+  console.error("  webagent apps [addr]         Composio Graph RAG host (local corpus)");
   process.exit(args[0] ? 0 : 2);
 }
 
@@ -70,6 +71,31 @@ switch (args[0]) {
       console.error("buyer  " + report.buyer.url);
       await new Promise(() => {});
     }
+    break;
+  }
+  case "apps": {
+    const { attachApps, loadAppsPack } = await import("./apps/index.ts");
+    const { openaiModel } = await import("./models.ts");
+    const addr = args[1] || ":8787";
+    const port = Number(addr.replace(/^.*:/, "")) || 8787;
+    const pack = loadAppsPack();
+    const hasKey = !!process.env.OPENAI_API_KEY;
+    if (hasKey) {
+      h.addModel(
+        openaiModel({
+          id: "openai",
+          baseUrl: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
+          model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+          apiKeyEnv: "OPENAI_API_KEY",
+        }),
+      );
+    }
+    const run = attachApps(h, pack, { model: hasKey ? "openai" : "echo" });
+    const hosted = listen(h, { port, run, model: hasKey ? "openai" : "echo" });
+    console.error(`composio agent ${hosted.url}`);
+    console.error(`  human   ${hosted.url}/`);
+    console.error(`  machine ${hosted.url}/mcp  run ${hosted.room.run.id}`);
+    await new Promise(() => {});
     break;
   }
   case "serve": {
