@@ -45,8 +45,8 @@ describe("host route + shared room", () => {
     const html = await page.text();
     expect(html).toContain(room.run.id);
     expect(html).toContain("/mcp");
-    expect(html).toContain("Let your agent talk to ours");
-    expect(html).toContain("Connect prompt");
+    expect(html).toContain("Composio Agent");
+    expect(html).toContain("Copy prompt");
     expect(html).toContain("Everything your agents");
     expect(html).toContain("wa-fab");
     expect(html).toContain("GET STARTED");

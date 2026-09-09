@@ -23,12 +23,6 @@ export function floatingWidget(publicUrl: string, runId: string): string {
       fab.innerHTML = open ? CLOSE_ICON : OPEN_ICON;
       fab.classList.toggle("active", open);
     };
-    const toast = (m) => {
-      const el = document.getElementById("wa-toast");
-      if (!el) return;
-      el.textContent = m; el.classList.add("on");
-      setTimeout(() => el.classList.remove("on"), 1800);
-    };
     const fallbackCopy = (text) => {
       const ta = document.createElement("textarea");
       ta.value = text; ta.setAttribute("readonly", "");
@@ -37,24 +31,20 @@ export function floatingWidget(publicUrl: string, runId: string): string {
       const ok = document.execCommand("copy"); ta.remove();
       if (!ok) throw new Error("copy");
     };
-    const copy = async (text, ok) => {
+    const copy = async (text) => {
       try {
         if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(text);
         else fallbackCopy(text);
-        toast(ok);
       } catch {
-        try { fallbackCopy(text); toast(ok); } catch { toast("Copy failed"); }
+        try { fallbackCopy(text); } catch {}
       }
     };
-    const flash = (btn, label) => {
-      const prev = btn.innerHTML; btn.textContent = label;
-      setTimeout(() => { btn.innerHTML = prev; }, 1600);
-    };
-    document.getElementById("wa-copy-url").onclick = async (ev) => {
-      await copy(URL_TEXT, "Link copied"); flash(ev.currentTarget, "✓ Copied");
+    const flash = (btn) => {
+      const prev = btn.textContent; btn.textContent = "Copied!";
+      setTimeout(() => { btn.textContent = prev; }, 1400);
     };
     document.getElementById("wa-copy-prompt").onclick = async (ev) => {
-      await copy(PROMPT, "Prompt copied"); flash(ev.currentTarget, "✓ Copied");
+      await copy(PROMPT); flash(ev.currentTarget);
     };
     const log = document.getElementById("wa-log");
     const md = (raw) => {
@@ -96,16 +86,22 @@ export function floatingWidget(publicUrl: string, runId: string): string {
       }).join('');
     };
     const add = (cls, text) => {
+      const welcome = document.getElementById("wa-welcome");
+      if (welcome) welcome.remove();
       const d = document.createElement("div");
       d.className = "wa-msg " + cls;
       if (cls === 'agent') { d.innerHTML = md(text); }
       else { d.textContent = text; }
       log.appendChild(d); log.scrollTop = log.scrollHeight;
     };
+    let lastUserText = '';
     const es = new EventSource("/live");
     es.onmessage = (e) => {
       const ev = JSON.parse(e.data);
-      if (ev.t === "say") add(ev.from || "human", (ev.from || "") + ": " + ev.text);
+      if (ev.t === "say" && ev.from === "human") {
+        if (ev.text === lastUserText) return;
+      }
+      if (ev.t === "say") add(ev.from || "human", ev.text || "");
       if (ev.t === "reply") add("agent", ev.text || "");
     };
     document.getElementById("wa-form").onsubmit = async (e) => {
@@ -113,13 +109,14 @@ export function floatingWidget(publicUrl: string, runId: string): string {
       const input = document.getElementById("wa-text");
       const text = input.value.trim();
       if (!text) return;
+      lastUserText = text;
       add("human", text);
       input.value = "";
       await fetch("/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) });
     };
   };
   const OPEN_ICON = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
-  const CLOSE_ICON = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  const CLOSE_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
   const mount = () => {
     if (!document.getElementById("wa-fab")) {
       window.__waBound = false;
@@ -148,279 +145,253 @@ function widgetMarkup(publicUrl: string, runId: string): string {
   return `
 <style>
   @keyframes wa-slide-up {
-    from { opacity: 0; transform: translateY(20px) scale(.97); }
-    to   { opacity: 1; transform: translateY(0) scale(1); }
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
-  @keyframes wa-fab-in {
-    from { opacity: 0; transform: scale(0); }
-    to   { opacity: 1; transform: scale(1); }
-  }
-  @keyframes wa-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(52,211,153,.45); }
-    50%      { box-shadow: 0 0 0 8px rgba(52,211,153,0); }
+  @keyframes wa-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
   }
 
-  .wa-fab, .wa-panel, .wa-toast {
-    font-family: var(--font-geist-sans, ui-sans-serif), system-ui, -apple-system, sans-serif;
+  #wa-root, #wa-root * { box-sizing: border-box; }
+  #wa-root {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
 
-  /* --- FAB button --- */
+  /* --- FAB --- */
   .wa-fab {
-    position: fixed; right: 1.5rem; bottom: 1.5rem; z-index: 2147483000;
-    width: 3.5rem; height: 3.5rem; border-radius: 50%; border: 0; cursor: pointer;
-    background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 100%);
-    color: #34d399; display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 4px 24px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.08);
-    transition: all .3s cubic-bezier(.4,0,.2,1);
-    animation: wa-fab-in .4s cubic-bezier(.34,1.56,.64,1) both, wa-pulse 2.5s ease-in-out 1s infinite;
+    position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 2147483000;
+    width: 3rem; height: 3rem; border-radius: 50%; border: 0; cursor: pointer;
+    background: #171717; color: #a1a1aa;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 12px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.06);
+    transition: all .2s ease;
   }
-  .wa-fab:hover {
-    transform: scale(1.08);
-    box-shadow: 0 8px 32px rgba(0,0,0,.6), 0 0 0 1px rgba(52,211,153,.3);
-  }
-  .wa-fab.active {
-    background: linear-gradient(135deg, #1a1a2e 0%, #0f0f0f 100%);
-    color: #fff; animation: none;
-  }
-  .wa-fab svg { width: 22px; height: 22px; }
+  .wa-fab:hover { color: #fff; box-shadow: 0 4px 20px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.1); }
+  .wa-fab.active { color: #71717a; }
+  .wa-fab svg { width: 18px; height: 18px; }
 
   /* --- Panel --- */
   .wa-panel {
-    position: fixed; right: 1.5rem; bottom: 5.8rem; z-index: 2147483000;
-    width: min(30rem, calc(100vw - 2rem));
-    height: min(70vh, calc(100vh - 7.5rem));
-    background: #0f0f0f;
-    color: #e5e5e5;
+    position: fixed; right: 1.25rem; bottom: 5rem; z-index: 2147483000;
+    width: min(26rem, calc(100vw - 1.5rem));
+    height: min(70vh, calc(100vh - 6.5rem));
+    background: #0a0a0a;
+    color: #e4e4e7;
     border: 1px solid rgba(255,255,255,.08);
-    border-radius: 20px;
+    border-radius: 16px;
     display: none; flex-direction: column; overflow: hidden;
-    box-shadow: 0 25px 60px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.05);
+    box-shadow: 0 20px 60px rgba(0,0,0,.6);
   }
   .wa-panel.open {
     display: flex;
-    animation: wa-slide-up .35s cubic-bezier(.4,0,.2,1) both;
+    animation: wa-slide-up .25s ease both;
   }
 
   /* --- Header --- */
   .wa-hdr {
-    padding: 1.1rem 1.25rem 1rem;
-    background: linear-gradient(180deg, rgba(52,211,153,.06) 0%, transparent 100%);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: .875rem 1rem;
     border-bottom: 1px solid rgba(255,255,255,.06);
-  }
-  .wa-hdr-top {
-    display: flex; align-items: center; gap: .6rem; margin-bottom: .5rem;
-  }
-  .wa-hdr-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: #34d399;
-    box-shadow: 0 0 8px rgba(52,211,153,.5);
     flex-shrink: 0;
   }
-  .wa-hdr-title {
-    font-size: .95rem; font-weight: 600; color: #fff; letter-spacing: -.01em;
+  .wa-hdr-left { display: flex; align-items: center; gap: .5rem; }
+  .wa-hdr-icon {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: #171717; border: 1px solid rgba(255,255,255,.08);
+    display: flex; align-items: center; justify-content: center;
+    font-size: .8rem; color: #34d399;
   }
-  .wa-hdr-sub {
-    font-size: .78rem; color: rgba(255,255,255,.45); line-height: 1.45; margin: 0;
+  .wa-hdr-title { font-size: .875rem; font-weight: 600; color: #fafafa; }
+  .wa-hdr-actions { display: flex; gap: .25rem; }
+  .wa-hdr-btn {
+    background: none; border: 0; color: #52525b; cursor: pointer;
+    padding: .25rem; border-radius: 6px; display: flex; align-items: center;
+    transition: color .15s, background .15s;
   }
+  .wa-hdr-btn:hover { color: #a1a1aa; background: rgba(255,255,255,.06); }
+  .wa-hdr-btn svg { width: 16px; height: 16px; }
 
-  /* --- A2A connect bar --- */
+  /* --- A2A bar (collapsed) --- */
   .wa-a2a {
     display: flex; align-items: center; gap: .5rem;
-    margin-top: .75rem; padding: .6rem .75rem;
-    background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06);
-    border-radius: 10px;
+    padding: .5rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    flex-shrink: 0;
   }
-  .wa-a2a-url {
-    flex: 1; font-family: var(--font-jetbrains-mono, ui-monospace, monospace);
-    font-size: .72rem; color: #34d399; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    user-select: all;
+  .wa-a2a-label {
+    font-size: .7rem; color: #52525b; letter-spacing: .02em;
+    white-space: nowrap; flex-shrink: 0;
   }
-  .wa-a2a-btn {
-    font-family: inherit; font-size: .7rem; font-weight: 500; letter-spacing: .02em;
-    border: 1px solid rgba(255,255,255,.12); background: transparent; color: rgba(255,255,255,.7);
-    padding: .35rem .65rem; border-radius: 8px; cursor: pointer;
-    transition: all .2s ease; white-space: nowrap;
+  .wa-a2a-link {
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+    font-size: .7rem; color: #71717a; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; flex: 1; user-select: all;
   }
-  .wa-a2a-btn:hover { border-color: rgba(52,211,153,.4); color: #34d399; }
-  .wa-a2a-btn.primary {
-    background: #34d399; color: #0f0f0f; border-color: #34d399; font-weight: 600;
+  .wa-a2a-copy {
+    font-size: .65rem; font-weight: 500; color: #a1a1aa;
+    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08);
+    padding: .2rem .5rem; border-radius: 6px; cursor: pointer;
+    transition: all .15s; white-space: nowrap; flex-shrink: 0;
   }
-  .wa-a2a-btn.primary:hover { background: #4ade80; border-color: #4ade80; }
-
-  /* --- Status --- */
-  .wa-status {
-    display: flex; align-items: center; gap: .4rem;
-    padding: .5rem 1.25rem;
-    font-size: .7rem; letter-spacing: .04em; text-transform: uppercase;
-    color: rgba(255,255,255,.35);
-  }
-  .wa-status-dot {
-    width: 6px; height: 6px; border-radius: 50%; background: #34d399;
-    animation: wa-pulse 2s ease-in-out infinite;
-  }
+  .wa-a2a-copy:hover { color: #e4e4e7; background: rgba(255,255,255,.1); }
 
   /* --- Chat log --- */
   #wa-log {
-    flex: 1; overflow-y: auto; padding: 1rem 1.25rem;
+    flex: 1; overflow-y: auto; padding: 1.25rem 1rem;
     scroll-behavior: smooth;
+    display: flex; flex-direction: column; gap: .75rem;
   }
-  #wa-log::-webkit-scrollbar { width: 4px; }
+  #wa-log::-webkit-scrollbar { width: 3px; }
   #wa-log::-webkit-scrollbar-track { background: transparent; }
-  #wa-log::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 2px; }
+  #wa-log::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 2px; }
 
   .wa-msg {
-    margin: .5rem 0; padding: .6rem .85rem; border-radius: 12px;
-    font-size: .88rem; line-height: 1.5; white-space: pre-wrap; max-width: 88%;
-    animation: wa-slide-up .25s ease both;
+    font-size: .9rem; line-height: 1.65; max-width: 92%;
+    animation: wa-fade-in .2s ease both;
   }
   .wa-msg.human {
-    background: rgba(52,211,153,.1); color: #a7f3d0;
-    border: 1px solid rgba(52,211,153,.15); margin-left: auto;
-    border-bottom-right-radius: 4px;
+    color: #fafafa; margin-left: auto;
+    background: #262626; padding: .625rem .875rem; border-radius: 14px 14px 4px 14px;
   }
   .wa-msg.agent {
-    background: rgba(255,255,255,.05); color: #e5e5e5;
-    border: 1px solid rgba(255,255,255,.06);
-    border-bottom-left-radius: 4px;
+    color: #d4d4d8;
+    padding: .25rem 0;
   }
 
-  /* --- Markdown in messages --- */
+  /* --- Markdown --- */
   .wa-msg.agent { white-space: normal; }
-  .wa-md-h { font-size: .92rem; font-weight: 600; color: #fff; margin: .6rem 0 .3rem; }
+  .wa-md-h { font-size: .9rem; font-weight: 600; color: #fafafa; margin: .75rem 0 .25rem; }
   .wa-md-h:first-child { margin-top: 0; }
-  .wa-md-ul { margin: .3rem 0; padding-left: 1.2rem; list-style: disc; }
-  .wa-md-ul li { margin: .15rem 0; line-height: 1.5; }
+  .wa-md-ul { margin: .25rem 0; padding-left: 1.25rem; list-style: disc; color: #a1a1aa; }
+  .wa-md-ul li { margin: .1rem 0; line-height: 1.6; color: #d4d4d8; }
   .wa-inline-code {
-    font-family: var(--font-jetbrains-mono, ui-monospace, monospace);
-    font-size: .82em; background: rgba(255,255,255,.08); color: #34d399;
-    padding: .1rem .35rem; border-radius: 4px; border: 1px solid rgba(255,255,255,.06);
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+    font-size: .82em; background: rgba(255,255,255,.08); color: #e4e4e7;
+    padding: .1rem .35rem; border-radius: 4px;
   }
   .wa-code-wrap {
-    position: relative; margin: .5rem 0; border-radius: 10px;
-    background: rgba(0,0,0,.4); border: 1px solid rgba(255,255,255,.06);
+    position: relative; margin: .5rem 0; border-radius: 8px;
+    background: #171717; border: 1px solid rgba(255,255,255,.06);
     overflow: hidden;
   }
   .wa-code-lang {
-    font-family: var(--font-jetbrains-mono, ui-monospace, monospace);
-    font-size: .65rem; text-transform: uppercase; letter-spacing: .05em;
-    color: rgba(255,255,255,.3); padding: .4rem .75rem .15rem;
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    font-size: .65rem; text-transform: uppercase; letter-spacing: .04em;
+    color: #52525b; padding: .35rem .75rem;
     border-bottom: 1px solid rgba(255,255,255,.04);
   }
   .wa-code {
     margin: 0; padding: .6rem .75rem; overflow-x: auto;
-    font-family: var(--font-jetbrains-mono, ui-monospace, monospace);
-    font-size: .8rem; line-height: 1.55; color: #d4d4d4;
-    tab-size: 2;
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+    font-size: .8rem; line-height: 1.55; color: #d4d4d8; tab-size: 2;
   }
   .wa-code code { font: inherit; color: inherit; }
   .wa-code-copy {
     position: absolute; top: .35rem; right: .35rem;
-    font-family: inherit; font-size: .65rem; font-weight: 500;
-    background: rgba(255,255,255,.08); color: rgba(255,255,255,.5);
-    border: 1px solid rgba(255,255,255,.1); border-radius: 6px;
-    padding: .2rem .5rem; cursor: pointer; transition: all .2s ease;
+    font-size: .6rem; font-weight: 500;
+    background: #262626; color: #71717a;
+    border: 1px solid rgba(255,255,255,.08); border-radius: 5px;
+    padding: .15rem .4rem; cursor: pointer; transition: all .15s;
   }
-  .wa-code-copy:hover { background: rgba(52,211,153,.15); color: #34d399; border-color: rgba(52,211,153,.3); }
-  .wa-md-link { color: #34d399; text-decoration: underline; text-underline-offset: 2px; }
-  .wa-md-link:hover { color: #4ade80; }
-  .wa-msg.agent p { margin: .3rem 0; }
-  .wa-msg.agent strong { color: #fff; }
+  .wa-code-copy:hover { color: #e4e4e7; background: #303030; }
+  .wa-md-link { color: #a1a1aa; text-decoration: underline; text-underline-offset: 2px; }
+  .wa-md-link:hover { color: #e4e4e7; }
+  .wa-msg.agent strong { color: #fafafa; }
 
   /* --- Welcome --- */
   .wa-welcome {
-    text-align: center; padding: 2rem 1.5rem 1rem; color: rgba(255,255,255,.4);
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 2rem 1.5rem; text-align: center;
   }
   .wa-welcome-icon {
-    width: 48px; height: 48px; margin: 0 auto 1rem;
-    border-radius: 14px; background: rgba(52,211,153,.08);
-    border: 1px solid rgba(52,211,153,.15);
+    width: 40px; height: 40px; margin-bottom: .75rem;
+    border-radius: 10px; background: #171717;
+    border: 1px solid rgba(255,255,255,.08);
     display: flex; align-items: center; justify-content: center;
-    font-size: 1.4rem;
+    font-size: 1.1rem; color: #34d399;
   }
   .wa-welcome h4 {
-    font-size: .9rem; color: rgba(255,255,255,.7); font-weight: 500; margin: 0 0 .4rem;
+    font-size: .9rem; color: #fafafa; font-weight: 600; margin: 0 0 .35rem;
   }
   .wa-welcome p {
-    font-size: .78rem; line-height: 1.5; margin: 0;
+    font-size: .8rem; line-height: 1.55; color: #71717a; margin: 0; max-width: 20rem;
   }
 
   /* --- Input --- */
-  .wa-input-bar {
-    display: flex; align-items: center; gap: .5rem;
-    padding: .75rem 1rem; border-top: 1px solid rgba(255,255,255,.06);
-    background: rgba(255,255,255,.02);
+  .wa-input-wrap {
+    padding: .75rem; border-top: 1px solid rgba(255,255,255,.06); flex-shrink: 0;
   }
-  .wa-input-bar input {
-    flex: 1; background: rgba(255,255,255,.06);
-    border: 1px solid rgba(255,255,255,.08); color: #fff;
-    padding: .7rem 1rem; border-radius: 12px; outline: none;
-    font: inherit; font-size: .88rem;
-    transition: border-color .2s ease;
+  .wa-input-box {
+    display: flex; align-items: flex-end;
+    background: #171717; border: 1px solid rgba(255,255,255,.08);
+    border-radius: 12px; overflow: hidden;
+    transition: border-color .2s;
   }
-  .wa-input-bar input:focus { border-color: rgba(52,211,153,.35); }
-  .wa-input-bar input::placeholder { color: rgba(255,255,255,.25); }
-  .wa-input-bar button {
-    width: 2.5rem; height: 2.5rem; border-radius: 12px; border: 0;
-    background: #34d399; color: #0f0f0f; cursor: pointer;
+  .wa-input-box:focus-within { border-color: rgba(255,255,255,.15); }
+  .wa-input-box textarea {
+    flex: 1; background: transparent; border: 0; color: #fafafa;
+    padding: .75rem .875rem; outline: none;
+    font: inherit; font-size: .875rem; line-height: 1.5;
+    resize: none; min-height: 2.75rem; max-height: 8rem;
+  }
+  .wa-input-box textarea::placeholder { color: #3f3f46; }
+  .wa-input-box button {
+    width: 2.25rem; height: 2.25rem; margin: .25rem .25rem .25rem 0;
+    border-radius: 8px; border: 0;
+    background: transparent; color: #52525b; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    transition: background .2s ease;
+    transition: color .15s, background .15s; flex-shrink: 0;
   }
-  .wa-input-bar button:hover { background: #4ade80; }
-  .wa-input-bar button svg { width: 18px; height: 18px; }
+  .wa-input-box button:hover { color: #e4e4e7; background: rgba(255,255,255,.06); }
+  .wa-input-box button svg { width: 16px; height: 16px; }
 
-  /* --- Toast --- */
-  .wa-toast {
-    position: fixed; bottom: 6rem; right: 1.5rem; z-index: 2147483001;
-    background: #34d399; color: #0f0f0f; font-weight: 600;
-    padding: .5rem 1rem; border-radius: 10px; font-size: .78rem;
-    opacity: 0; transform: translateY(8px);
-    transition: all .25s ease;
-    pointer-events: none;
-  }
-  .wa-toast.on { opacity: 1; transform: translateY(0); }
+  /* --- Run ID (hidden but present for tests) --- */
+  .wa-run-id { display: none; }
 
   /* --- Mobile --- */
   @media (max-width: 640px) {
     .wa-panel {
-      right: 0; bottom: 0; left: 0;
-      width: 100%; height: 100vh;
-      border-radius: 0;
+      right: 0; bottom: 0; left: 0; top: 0;
+      width: 100%; height: 100%;
+      border-radius: 0; border: 0;
     }
-    .wa-fab { right: 1rem; bottom: 1rem; }
+    .wa-fab { right: .75rem; bottom: .75rem; }
   }
 </style>
 <button class="wa-fab" id="wa-fab" type="button" aria-label="Open agent chat">
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
 </button>
 <div class="wa-panel" id="wa-panel" role="dialog" aria-label="Composio apps agent">
   <div class="wa-hdr">
-    <div class="wa-hdr-top">
-      <div class="wa-hdr-dot"></div>
+    <div class="wa-hdr-left">
+      <div class="wa-hdr-icon">✦</div>
       <span class="wa-hdr-title">Composio Agent</span>
     </div>
-    <p class="wa-hdr-sub">Let your agent talk to ours — paste the link or copy the connect prompt. <span style="opacity:.3;font-size:.65rem">Run ${esc(runId)}</span></p>
-    <div class="wa-a2a">
-      <span class="wa-a2a-url" id="wa-url">${esc(publicUrl)}</span>
-      <button class="wa-a2a-btn" type="button" id="wa-copy-url">Copy link</button>
-      <button class="wa-a2a-btn primary" type="button" id="wa-copy-prompt">Connect prompt</button>
-    </div>
   </div>
-  <div class="wa-status"><div class="wa-status-dot"></div>Online · Ask which Composio app fits your use case</div>
+  <div class="wa-a2a">
+    <span class="wa-a2a-label">Connect your agent</span>
+    <span class="wa-a2a-link" id="wa-url">${esc(publicUrl)}</span>
+    <button class="wa-a2a-copy" type="button" id="wa-copy-prompt">Copy prompt</button>
+  </div>
   <div id="wa-log">
-    <div class="wa-welcome">
+    <div class="wa-welcome" id="wa-welcome">
       <div class="wa-welcome-icon">✦</div>
       <h4>Composio Apps Agent</h4>
-      <p>Ask me which Composio integration fits your use case, or debug OAuth/auth issues.</p>
+      <p>Ask which Composio integration fits your use case, or debug OAuth and auth issues.</p>
     </div>
   </div>
-  <form class="wa-input-bar" id="wa-form">
-    <input id="wa-text" autocomplete="off" placeholder="Ask about Composio integrations..."/>
-    <button type="submit" aria-label="Send">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-    </button>
-  </form>
-</div>
-<div class="wa-toast" id="wa-toast">Copied</div>`;
+  <div class="wa-input-wrap">
+    <form class="wa-input-box" id="wa-form">
+      <textarea id="wa-text" rows="1" placeholder="Ask a question..." autocomplete="off"></textarea>
+      <button type="submit" aria-label="Send">
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z"/></svg>
+      </button>
+    </form>
+  </div>
+  <span class="wa-run-id">${esc(runId)}</span>
+</div>`;
 }
 
 function esc(s: string): string {
