@@ -169,8 +169,15 @@ issue_le_cert() {
 
 install_renew_hook() {
   local dest=/etc/letsencrypt/renewal-hooks/deploy/composio-nginx.sh
+  local cfg=/etc/letsencrypt/renewal-hooks/deploy/composio-nginx.env
   sudo mkdir -p /etc/letsencrypt/renewal-hooks/deploy
   sudo install -m 755 "$HERE/composio-renew-hook.sh" "$dest"
+  # Bake the deployed hostname so renewals follow WEBAGENT_FRONT_HOST.
+  {
+    printf 'WEBAGENT_FRONT_HOST=%q\n' "$HOST_NAME"
+    printf 'WEBAGENT_CERT_DIR=%q\n' "$CERT_DIR"
+  } | sudo tee "$cfg" >/dev/null
+  sudo chmod 644 "$cfg"
   sudo systemctl enable --now certbot-renew.timer 2>/dev/null \
     || sudo systemctl enable --now certbot.timer 2>/dev/null \
     || true
