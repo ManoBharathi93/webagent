@@ -175,8 +175,8 @@ function widgetMarkup(publicUrl: string, runId: string): string {
   /* --- Panel --- */
   .wa-panel {
     position: fixed; right: 1.25rem; bottom: 5rem; z-index: 2147483000;
-    width: min(26rem, calc(100vw - 1.5rem));
-    height: min(70vh, calc(100vh - 6.5rem));
+    width: min(42rem, 70vw, calc(100vw - 1.5rem));
+    height: min(75vh, calc(100vh - 6.5rem));
     background: #0a0a0a;
     color: #e4e4e7;
     border: 1px solid rgba(255,255,255,.08);
@@ -213,29 +213,35 @@ function widgetMarkup(publicUrl: string, runId: string): string {
   .wa-hdr-btn:hover { color: #a1a1aa; background: rgba(255,255,255,.06); }
   .wa-hdr-btn svg { width: 16px; height: 16px; }
 
-  /* --- A2A bar (collapsed) --- */
+  /* --- A2A banner --- */
   .wa-a2a {
-    display: flex; align-items: center; gap: .5rem;
-    padding: .5rem 1rem;
+    padding: .75rem 1rem;
     border-bottom: 1px solid rgba(255,255,255,.06);
     flex-shrink: 0;
   }
-  .wa-a2a-label {
-    font-size: .7rem; color: #52525b; letter-spacing: .02em;
-    white-space: nowrap; flex-shrink: 0;
+  .wa-a2a-headline {
+    font-size: .8rem; font-weight: 600; color: #fafafa; margin: 0 0 .5rem;
   }
-  .wa-a2a-link {
-    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
-    font-size: .7rem; color: #71717a; overflow: hidden; text-overflow: ellipsis;
-    white-space: nowrap; flex: 1; user-select: all;
+  .wa-a2a-headline em {
+    font-style: normal; color: #34d399;
+  }
+  .wa-a2a-row {
+    display: flex; align-items: center; gap: .5rem;
+  }
+  .wa-a2a-prompt {
+    flex: 1; font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+    font-size: .75rem; color: #a1a1aa; background: #171717;
+    border: 1px solid rgba(255,255,255,.06); border-radius: 8px;
+    padding: .45rem .65rem; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; user-select: all; cursor: text;
   }
   .wa-a2a-copy {
-    font-size: .65rem; font-weight: 500; color: #a1a1aa;
-    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08);
-    padding: .2rem .5rem; border-radius: 6px; cursor: pointer;
-    transition: all .15s; white-space: nowrap; flex-shrink: 0;
+    font-size: .7rem; font-weight: 600; color: #0a0a0a;
+    background: #34d399; border: 0; border-radius: 8px;
+    padding: .45rem .75rem; cursor: pointer;
+    transition: background .15s; white-space: nowrap; flex-shrink: 0;
   }
-  .wa-a2a-copy:hover { color: #e4e4e7; background: rgba(255,255,255,.1); }
+  .wa-a2a-copy:hover { background: #4ade80; }
 
   /* --- Chat log --- */
   #wa-log {
@@ -371,9 +377,11 @@ function widgetMarkup(publicUrl: string, runId: string): string {
     </div>
   </div>
   <div class="wa-a2a">
-    <span class="wa-a2a-label">Connect your agent</span>
-    <span class="wa-a2a-link" id="wa-url">${esc(publicUrl)}</span>
-    <button class="wa-a2a-copy" type="button" id="wa-copy-prompt">Copy prompt</button>
+    <p class="wa-a2a-headline">Let your agent talk to <em>our agent</em> — just paste this:</p>
+    <div class="wa-a2a-row">
+      <span class="wa-a2a-prompt" id="wa-url">${esc(publicUrl)}</span>
+      <button class="wa-a2a-copy" type="button" id="wa-copy-prompt">Copy prompt</button>
+    </div>
   </div>
   <div id="wa-log">
     <div class="wa-welcome" id="wa-welcome">
