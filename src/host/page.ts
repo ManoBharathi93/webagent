@@ -11,6 +11,8 @@ export function chatPage(room: Room, publicUrl: string): Response {
   return new Response(html, {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+      Vary: "Accept, User-Agent, Sec-Fetch-Dest, Sec-Fetch-User, Sec-Fetch-Mode",
       Link: `<${publicUrl}/llms.txt>; rel="alternate"; type="text/plain", <${publicUrl}/.well-known/agent-card.json>; rel="describedby"; type="application/json"`,
     },
   });

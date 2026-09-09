@@ -2,7 +2,7 @@ import type { Harness } from "../harness.ts";
 import { intake } from "../intake.ts";
 import { agentCard, CARD_PATHS, connectPrompt, linkHeader, TEXT_CARD_PATHS, type AgentCardMeta } from "./card.ts";
 import { corsPreflight, withCors } from "./cors.ts";
-import { clientKind, wantsAgentCard, wantsJsonCard } from "./detect.ts";
+import { clientKind, wantsAgentCard, wantsHumanPage, wantsJsonCard } from "./detect.ts";
 import { chatPage } from "./page.ts";
 import { Room } from "./room.ts";
 import { readSessionId, sessionCookie, Sessions } from "./sessions.ts";
@@ -77,7 +77,9 @@ async function route(
     }
   }
   if (url.pathname === "/" && req.method === "GET") {
-    if (wantsAgentCard(url) || kind === "machine") {
+    const forceHuman = wantsHumanPage(url);
+    const forceAgent = wantsAgentCard(url);
+    if (!forceHuman && (forceAgent || kind === "machine")) {
       if (wantsJsonCard(req, url)) {
         const sid = existingSession(req, sessions);
         if (sid) return withSession(jsonCard(base, lobby, meta, sid), sid);
@@ -125,6 +127,7 @@ function textCard(req: Request, sessions: Sessions, base: string): Response {
       "Content-Type": "text/plain; charset=utf-8",
       Link: linkHeader(base),
       "Cache-Control": "no-store",
+      Vary: "Accept, User-Agent, Sec-Fetch-Dest, Sec-Fetch-User, Sec-Fetch-Mode",
     },
   });
   return sid ? withSession(res, sid) : res;

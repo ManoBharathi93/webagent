@@ -20,18 +20,31 @@ describe("host detect", () => {
     expect(clientKind(new Request("http://t/", { headers: HUMAN_TAB }))).toBe("human");
   });
 
-  test("document navigation without user activation is machine", () => {
+  test("Safari / iPhone document navigation without Sec-Fetch-User is human", () => {
+    expect(
+      clientKind(
+        new Request("http://t/", {
+          headers: {
+            Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "User-Agent":
+              "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+          },
+        }),
+      ),
+    ).toBe("human");
     expect(
       clientKind(
         new Request("http://t/", {
           headers: {
             Accept: "text/html,application/xhtml+xml",
-            "User-Agent": "Mozilla/5.0 Chrome/120",
-            "Sec-Fetch-Dest": "document",
+            "User-Agent":
+              "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
           },
         }),
       ),
-    ).toBe("machine");
+    ).toBe("human");
   });
 
   test("Cursor / Playwright / headless look like a tab but are machine", () => {
@@ -71,6 +84,7 @@ describe("host detect", () => {
     expect(clientKind(new Request("http://t/", { headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" } }))).toBe(
       "machine",
     );
+    expect(clientKind(new Request("http://t/", { headers: { Accept: "*/*", "User-Agent": "curl/8.0" } }))).toBe("machine");
   });
 });
 
@@ -102,6 +116,20 @@ describe("host route + shared room", () => {
     expect(card.headers.get("set-cookie")).toBeNull();
     expect(card.headers.get("access-control-allow-origin")).toBe("*");
     expect(card.headers.get("link")).toContain("llms.txt");
+
+    const phone = await fetchFn(
+      new Request("http://t/", {
+        headers: {
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "User-Agent":
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
+          "Sec-Fetch-Dest": "document",
+          "Sec-Fetch-Mode": "navigate",
+        },
+      }),
+    );
+    expect(phone.headers.get("content-type")).toContain("text/html");
+    expect(await phone.text()).toContain("wa-fab");
   });
 
   test("JSON card only when asked; howToConnect is POST /chat", async () => {
@@ -167,6 +195,10 @@ describe("host route + shared room", () => {
     expect(forced.headers.get("content-type")).toContain("text/plain");
     const jsonForced = await fetchFn(new Request("http://t/?agent=1&format=json", { headers: HUMAN_TAB }));
     expect(jsonForced.headers.get("content-type")).toContain("application/json");
+    const forcedHuman = await fetchFn(
+      new Request("http://t/?human=1", { headers: { Accept: "*/*", "User-Agent": "curl/8.0" } }),
+    );
+    expect(forcedHuman.headers.get("content-type")).toContain("text/html");
   });
 
   test("each chat without a session is a fresh context", async () => {
