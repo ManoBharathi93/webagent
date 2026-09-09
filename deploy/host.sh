@@ -46,7 +46,18 @@ sudo ln -sfn "$BUN" /usr/local/bin/bun
 sudo mkdir -p "$ROOT"
 sudo chown "$RUN_USER:$(id -gn)" "$ROOT"
 if [ ! -d "$ROOT/.git" ]; then
-  git clone "$REPO" "$ROOT"
+  tmp="$(mktemp -d)"
+  git clone "$REPO" "$tmp/webagent"
+  if [ -f "$ROOT/.env" ]; then
+    cp "$ROOT/.env" "$tmp/webagent/.env"
+    chmod 600 "$tmp/webagent/.env"
+  fi
+  # Keep an existing .env; replace everything else.
+  find "$ROOT" -mindepth 1 -maxdepth 1 ! -name '.env' -exec rm -rf {} +
+  shopt -s dotglob
+  mv "$tmp/webagent"/* "$ROOT/"
+  shopt -u dotglob
+  rm -rf "$tmp"
 fi
 cd "$ROOT"
 git fetch origin "$BRANCH"
