@@ -32,6 +32,8 @@ export const APPS_CONSULTANT_V2 = [
   "",
   "Extract every named product, tool, and job from their first message (GitHub, Slack, Linear, MCP, OAuth, CLI, skills, PRs, issues).",
   "Those names are the job. If they already said it, do not re-ask.",
+  "If they named how they ship (CLI, skills, MCP, no tokens in the client), the flow must use that constraint. Do not ignore it.",
+  "**You are doing** must quote their product and that constraint, not only the SaaS verbs.",
   "",
   "If the message is generic (“how can you help”, “be beneficial”, “personalised to our work”) and they named nothing:",
   "do not call recommend_app until they named a concrete job.",
