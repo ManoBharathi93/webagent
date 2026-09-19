@@ -1,7 +1,11 @@
 # Hosting the Corgi insurance advisor at corgi.agentnet.it.com
 
-The Corgi agent runs on the same EC2 instance as the Composio agent.
-It binds port **8788** (composio uses 8787). Nginx routes by `server_name`.
+The Corgi agent runs on the same EC2 instance as the Composio agent,
+in a **separate checkout** (`/opt/webagent-corgi`) so switching Corgi
+does not move the live Composio branch. It binds port **8788**
+(composio uses 8787). Nginx routes by `server_name`.
+
+Live: `https://corgi.agentnet.it.com/`
 
 ## DNS
 
@@ -16,13 +20,7 @@ Cloudflare terminates HTTPS; nginx sees HTTP on port 80.
 ## Quick deploy (on the EC2 host)
 
 ```bash
-sudo mkdir -p /opt/webagent
-sudo tee /opt/webagent/.env.corgi >/dev/null <<EOF
-OPENAI_API_KEY=...
-OPENAI_MODEL=gpt-4o-mini
-WEBAGENT_PUBLIC_URL=https://corgi.agentnet.it.com
-EOF
-chmod 600 /opt/webagent/.env.corgi
+# copies OPENAI_API_KEY from /opt/webagent/.env
 curl -fsSL https://raw.githubusercontent.com/TheAgent-net/webagent/cursor/corgi-webagent-e5be/deploy/corgi-host.sh | bash
 ```
 
@@ -31,7 +29,7 @@ This installs bun, checks out the branch, starts `webagent-corgi.service` on por
 ## Add the nginx server block
 
 ```bash
-cd /opt/webagent
+cd /opt/webagent-corgi
 bash deploy/corgi-front.sh
 ```
 
@@ -76,7 +74,8 @@ Cloudflare (HTTPS :443)
 | Host | composio.agentnet.it.com | corgi.agentnet.it.com |
 | Port | 8787 | 8788 |
 | Service | webagent-apps.service | webagent-corgi.service |
-| Env file | /opt/webagent/.env | /opt/webagent/.env.corgi |
-| Branch | cursor/composio-agent-e5be | cursor/corgi-webagent-e5be |
+| Checkout | /opt/webagent | /opt/webagent-corgi |
+| Env file | /opt/webagent/.env | /opt/webagent-corgi/.env.corgi |
+| Branch | cursor/a2a-simple-connect-e5be (live) | cursor/corgi-webagent-e5be |
 
 Both use the same nginx container, different `server_name` blocks.
