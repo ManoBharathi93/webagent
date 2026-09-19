@@ -1,0 +1,16 @@
+[Unit]
+Description=Corgi insurance advisor webagent
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/webagent
+EnvironmentFile=-/opt/webagent/.env.corgi
+ExecStart=/usr/local/bin/bun src/cli.ts corgi :8788
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target
