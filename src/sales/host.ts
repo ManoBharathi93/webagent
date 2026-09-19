@@ -10,6 +10,7 @@ import { Room } from "../host/room.ts";
 import { Sessions } from "./sessions.ts";
 import { corgiAgentCard, corgiConnectPrompt } from "./card.ts";
 import { corgiChatPage } from "./page.ts";
+import { corgiSiteResponse } from "./site.ts";
 
 const CARD_PATHS = new Set([
   "/agent.json",
@@ -107,6 +108,11 @@ async function route(
   if (url.pathname === "/live") {
     const hit = sessions.open(readSessionId(req, url.searchParams.get("session")));
     return withSession(hit.room.stream(), hit.id);
+  }
+
+  if ((req.method === "GET" || req.method === "HEAD") && url.pathname !== "/") {
+    const asset = corgiSiteResponse(url);
+    if (asset) return asset;
   }
 
   if (url.pathname === "/chat" && req.method === "POST") {

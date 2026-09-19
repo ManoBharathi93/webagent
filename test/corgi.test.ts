@@ -198,8 +198,11 @@ describe("corgi host routing", () => {
     const html = await res.text();
     expect(html).toContain("Corgi");
     expect(html).toContain("Insurance");
+    expect(html).toContain("Speed of Compute");
     expect(html).toContain("wa-fab");
     expect(html).toContain("wa-chip");
+    expect(html).toContain("#FF5C00");
+    expect(html).toContain("#FDFBF6");
   });
 
   test("machine GET / returns agent card JSON", async () => {
@@ -280,6 +283,16 @@ describe("corgi host routing", () => {
     expect(res.ok).toBe(true);
     const card = (await res.json()) as any;
     expect(card.name).toBe("Corgi");
+  });
+
+  test("serves captured Corgi homepage assets", async () => {
+    const h = new Harness();
+    const room = new Room(h);
+    const sessions = new Sessions(h, room);
+    const fetchFn = corgiHost(h, room, "https://corgi.test", sessions);
+    const logo = await fetchFn(new Request("http://t/images/corgi%20logo%20vector.svg"));
+    expect(logo.ok).toBe(true);
+    expect(logo.headers.get("content-type")).toContain("svg");
   });
 
   test("GET /llms.txt returns connect prompt", async () => {
