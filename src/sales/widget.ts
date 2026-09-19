@@ -109,6 +109,12 @@ export function corgiWidget(publicUrl: string, runId: string): string {
       log.appendChild(d); log.scrollTop = log.scrollHeight;
     };
     let lastUserText = '';
+    let lastAgentText = '';
+    const showAgent = (text) => {
+      if (!text || text === lastAgentText) return;
+      lastAgentText = text;
+      add("agent", text);
+    };
     if (!window.__waSession) {
       window.__waSession = (crypto.randomUUID && crypto.randomUUID()) || ("c" + Date.now());
     }
@@ -122,7 +128,7 @@ export function corgiWidget(publicUrl: string, runId: string): string {
         if (ev.text === lastUserText) return;
       }
       if (ev.t === "say") add(ev.from || "human", ev.text || "");
-      if (ev.t === "reply") add("agent", ev.text || "");
+      if (ev.t === "reply") showAgent(ev.text || "");
     };
     const form = document.getElementById("wa-form");
     const input = document.getElementById("wa-text");
@@ -134,11 +140,13 @@ export function corgiWidget(publicUrl: string, runId: string): string {
       add("human", text);
       input.value = "";
       if (chipWrap) chipWrap.remove();
-      await fetch("/chat", {
+      const res = await fetch("/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ text, session }),
       });
+      const body = await res.json().catch(() => ({}));
+      if (body.lastText) showAgent(body.lastText);
     };
     let composing = false;
     input.addEventListener("compositionstart", () => { composing = true; });

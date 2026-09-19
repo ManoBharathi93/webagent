@@ -214,6 +214,7 @@ describe("corgi host routing", () => {
     expect(html).toContain("#626262");
     expect(html).toContain("#e1e1e1");
     expect(html).toContain("Ask Corgi");
+    expect(html).toContain("lastText");
   });
 
   test("machine GET / returns agent card JSON", async () => {
