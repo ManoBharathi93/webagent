@@ -203,6 +203,11 @@ describe("corgi host routing", () => {
     expect(html).toContain("wa-chip");
     expect(html).toContain("#FF5C00");
     expect(html).toContain("#FDFBF6");
+    expect(html).toContain("#ff5c00");
+    expect(html).toContain("#ff7d33");
+    expect(html).toContain("#191919");
+    expect(html).toContain("wa-btn-orange");
+    expect(html).toContain("Ask Corgi");
   });
 
   test("machine GET / returns agent card JSON", async () => {

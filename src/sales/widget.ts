@@ -20,7 +20,7 @@ export function corgiWidget(publicUrl: string, runId: string): string {
     window.__waBound = true;
     const setOpen = (open) => {
       panel.classList.toggle("open", open);
-      fab.innerHTML = open ? CLOSE_ICON : OPEN_ICON;
+      fab.innerHTML = open ? CLOSE_ICON + "<span>Close</span>" : OPEN_ICON + "<span>Ask Corgi</span>";
       fab.classList.toggle("active", open);
       fab.setAttribute("aria-label", open ? "Close chat" : "Open chat");
     };
@@ -170,7 +170,7 @@ export function corgiWidget(publicUrl: string, runId: string): string {
       const fab = document.getElementById("wa-fab");
       if (panel && fab) {
         panel.classList.add("open");
-        fab.innerHTML = CLOSE_ICON;
+        fab.innerHTML = CLOSE_ICON + "<span>Close</span>";
         fab.classList.add("active");
       }
     }
@@ -196,126 +196,159 @@ function widgetMarkup(publicUrl: string, runId: string): string {
   }
   #wa-root, #wa-root * { box-sizing: border-box; }
   #wa-root {
+    --corgi-ink: #191919;
+    --corgi-ink-hover: #4a4a4a;
+    --corgi-ink-active: #7b7b7b;
+    --corgi-muted: #4e4e4e;
+    --corgi-dim: #7b7b7b;
+    --corgi-orange: #ff5c00;
+    --corgi-orange-hover: #ff7d33;
+    --corgi-orange-active: #ff9d66;
+    --corgi-cream: #FDFBF6;
+    --corgi-line: #e1e1e1;
+    --corgi-white: #fff;
     font-family: Geist, "f37Bolton", ui-sans-serif, system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
-    color: #191919;
+    color: var(--corgi-ink);
   }
+  #wa-root button {
+    font-family: inherit;
+    cursor: pointer;
+  }
+  /* Same shape/type as corgi.insure Get insured / Book a demo */
+  #wa-root .wa-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid transparent; border-radius: 10px;
+    height: 35px; min-width: 96px; padding: 0 16px;
+    font-size: 16px; font-weight: 400; line-height: 1.2; letter-spacing: -0.21px;
+    white-space: nowrap; transition: background .12s ease, color .12s ease, border-color .12s ease;
+  }
+  #wa-root .wa-btn-orange {
+    background: var(--corgi-orange); color: #fff;
+  }
+  #wa-root .wa-btn-orange:hover { background: var(--corgi-orange-hover); }
+  #wa-root .wa-btn-orange:active { background: var(--corgi-orange-active); }
+  #wa-root .wa-btn-black {
+    background: var(--corgi-ink); color: #fff;
+  }
+  #wa-root .wa-btn-black:hover { background: var(--corgi-ink-hover); }
+  #wa-root .wa-btn-black:active { background: var(--corgi-ink-active); }
+  #wa-root .wa-btn-white {
+    background: var(--corgi-white); color: var(--corgi-ink); border-color: var(--corgi-line);
+  }
+  #wa-root .wa-btn-white:hover { background: #f9f9f9; }
+  #wa-root .wa-btn-white:active { background: #ededed; }
   .wa-fab {
     position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 2147483000;
-    width: 3.25rem; height: 3.25rem; border-radius: 50%; border: 0; cursor: pointer;
-    background: #FF5C00; color: #fff;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 8px 24px rgba(255,92,0,.28);
-    transition: transform .15s ease, background .15s ease;
+    gap: .4rem;
+    box-shadow: none;
   }
-  .wa-fab:hover { background: #FF7D33; transform: translateY(-1px); }
-  .wa-fab.active { background: #191919; box-shadow: 0 8px 24px rgba(25,25,25,.18); }
-  .wa-fab svg { width: 18px; height: 18px; }
+  .wa-fab.active {
+    background: var(--corgi-ink);
+  }
+  .wa-fab.active:hover { background: var(--corgi-ink-hover); }
+  .wa-fab.active:active { background: var(--corgi-ink-active); }
+  .wa-fab svg { width: 15px; height: 15px; flex-shrink: 0; }
   .wa-panel {
-    position: fixed; right: 1.25rem; bottom: 5.25rem; z-index: 2147483000;
+    position: fixed; right: 1.25rem; bottom: 4.6rem; z-index: 2147483000;
     width: min(42rem, 70vw, calc(100vw - 1.5rem));
     height: min(80vh, calc(100vh - 6.5rem));
-    background: #FDFBF6;
-    color: #191919;
-    border: 1px solid #E8E4DC;
-    border-radius: 18px;
+    background: var(--corgi-cream);
+    color: var(--corgi-ink);
+    border: 1px solid var(--corgi-line);
+    border-radius: 12px;
     display: none; flex-direction: column; overflow: hidden;
-    box-shadow: 0 24px 60px rgba(25,25,25,.14);
+    box-shadow: 0 16px 48px rgba(25,25,25,.10);
   }
   .wa-panel.open { display: flex; animation: wa-slide-up .25s ease both; }
   .wa-hdr {
     display: flex; align-items: center; justify-content: space-between;
-    padding: .9rem 1rem;
-    border-bottom: 1px solid #E8E4DC;
-    background: #FDFBF6;
+    padding: .75rem 1rem;
+    border-bottom: 1px solid var(--corgi-line);
+    background: var(--corgi-white);
     flex-shrink: 0;
   }
   .wa-hdr-left { display: flex; align-items: center; gap: .55rem; }
   .wa-hdr-icon {
     width: 28px; height: 28px; border-radius: 8px;
-    background: #fff; border: 1px solid #E8E4DC;
+    background: var(--corgi-white); border: 1px solid var(--corgi-line);
     display: flex; align-items: center; justify-content: center;
     overflow: hidden;
   }
   .wa-hdr-icon img { width: 18px; height: 18px; object-fit: contain; }
-  .wa-hdr-title { font-size: .9rem; font-weight: 700; color: #191919; letter-spacing: -.02em; }
-  .wa-hdr-sub { font-size: .7rem; color: #7B7B7B; margin-left: .15rem; }
+  .wa-hdr-title { font-size: 16px; font-weight: 400; color: var(--corgi-ink); letter-spacing: -0.21px; }
+  .wa-hdr-sub { font-size: 14px; color: #4a4a4a; margin-left: .15rem; letter-spacing: -0.21px; }
   .wa-hdr-actions { display: flex; gap: .25rem; }
   .wa-hdr-btn {
-    background: none; border: 0; color: #4E4E4E; cursor: pointer;
-    width: 2.25rem; height: 2.25rem; padding: 0; border-radius: 999px;
+    background: none; border: 0; color: #4a4a4a; cursor: pointer;
+    width: 35px; height: 35px; padding: 0; border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
-    transition: color .15s, background .15s;
+    transition: color .12s, background .12s;
   }
-  .wa-hdr-btn:hover { color: #191919; background: #F3EEE6; }
-  .wa-hdr-btn svg { width: 18px; height: 18px; }
+  .wa-hdr-btn:hover { color: var(--corgi-ink); background: #f9f9f9; }
+  .wa-hdr-btn:active { background: #ededed; }
+  .wa-hdr-btn svg { width: 16px; height: 16px; }
   .wa-a2a {
     padding: .75rem 1rem;
-    border-bottom: 1px solid #E8E4DC;
-    background: #fff;
+    border-bottom: 1px solid var(--corgi-line);
+    background: var(--corgi-white);
     flex-shrink: 0;
   }
   .wa-a2a-headline {
-    font-size: .8rem; font-weight: 600; color: #191919; margin: 0 0 .5rem;
+    font-size: 14px; font-weight: 400; color: var(--corgi-ink); margin: 0 0 .5rem;
+    letter-spacing: -0.21px;
   }
-  .wa-a2a-headline em { font-style: normal; color: #FF5C00; }
+  .wa-a2a-headline em { font-style: italic; font-family: georgia, "Times New Roman", serif; color: var(--corgi-orange); }
   .wa-a2a-row { display: flex; align-items: center; gap: .5rem; }
   .wa-a2a-prompt {
     flex: 1; font-family: ui-monospace, SFMono-Regular, monospace;
-    font-size: .75rem; color: #4E4E4E; background: #FDFBF6;
-    border: 1px solid #E8E4DC; border-radius: 10px;
+    font-size: .75rem; color: var(--corgi-muted); background: var(--corgi-cream);
+    border: 1px solid var(--corgi-line); border-radius: 10px;
     padding: .45rem .65rem; overflow: hidden; text-overflow: ellipsis;
     white-space: nowrap; user-select: all; cursor: text;
   }
-  .wa-a2a-copy {
-    font-size: .7rem; font-weight: 700; color: #fff;
-    background: #FF5C00; border: 0; border-radius: 999px;
-    padding: .45rem .8rem; cursor: pointer;
-    transition: background .15s; white-space: nowrap; flex-shrink: 0;
-  }
-  .wa-a2a-copy:hover { background: #FF7D33; }
   #wa-log {
     flex: 1; overflow-y: auto; padding: 1.25rem 1rem;
     scroll-behavior: smooth;
     display: flex; flex-direction: column; gap: .75rem;
-    background: #FDFBF6;
+    background: var(--corgi-cream);
   }
   #wa-log::-webkit-scrollbar { width: 3px; }
   #wa-log::-webkit-scrollbar-track { background: transparent; }
-  #wa-log::-webkit-scrollbar-thumb { background: #E8E4DC; border-radius: 2px; }
+  #wa-log::-webkit-scrollbar-thumb { background: var(--corgi-line); border-radius: 2px; }
   .wa-msg {
     font-size: .9rem; line-height: 1.65; max-width: 92%;
     animation: wa-fade-in .2s ease both;
   }
   .wa-msg.human {
     color: #fff; margin-left: auto;
-    background: #191919; padding: .625rem .875rem; border-radius: 14px 14px 4px 14px;
+    background: var(--corgi-ink); padding: .55rem .85rem; border-radius: 10px;
   }
-  .wa-msg.agent { color: #2c2c2c; padding: .25rem 0; white-space: normal; }
-  .wa-md-h { font-family: georgia, serif; font-size: 1rem; font-weight: 400; color: #191919; margin: .75rem 0 .25rem; }
+  .wa-msg.agent { color: #1d1d1d; padding: .25rem 0; white-space: normal; }
+  .wa-md-h { font-family: georgia, serif; font-size: 1rem; font-weight: 400; color: var(--corgi-ink); margin: .75rem 0 .25rem; }
   .wa-md-h:first-child { margin-top: 0; }
-  .wa-md-ul { margin: .25rem 0; padding-left: 1.25rem; list-style: disc; color: #4E4E4E; }
-  .wa-md-ul li { margin: .1rem 0; line-height: 1.6; color: #2c2c2c; }
+  .wa-md-ul { margin: .25rem 0; padding-left: 1.25rem; list-style: disc; color: var(--corgi-muted); }
+  .wa-md-ul li { margin: .1rem 0; line-height: 1.6; color: #1d1d1d; }
   .wa-inline-code {
     font-family: ui-monospace, SFMono-Regular, monospace;
-    font-size: .82em; background: #F3EEE6; color: #191919;
-    padding: .1rem .35rem; border-radius: 4px;
+    font-size: .82em; background: #f6f6f6; color: var(--corgi-ink);
+    padding: .1rem .35rem; border-radius: 6px;
   }
   .wa-code-wrap {
     position: relative; margin: .5rem 0; border-radius: 10px;
-    background: #fff; border: 1px solid #E8E4DC;
+    background: var(--corgi-white); border: 1px solid var(--corgi-line);
     overflow: hidden;
   }
   .wa-code { margin: 0; padding: .6rem .75rem; overflow-x: auto;
     font-family: ui-monospace, SFMono-Regular, monospace;
-    font-size: .8rem; line-height: 1.55; color: #2c2c2c; tab-size: 2;
+    font-size: .8rem; line-height: 1.55; color: #1d1d1d; tab-size: 2;
   }
   .wa-code code { font: inherit; color: inherit; }
-  .wa-md-link { color: #FF5C00; text-decoration: underline; text-underline-offset: 2px; }
+  .wa-md-link { color: var(--corgi-orange); text-decoration: underline; text-underline-offset: 2px; }
   .wa-md-link:hover { color: #b84200; }
-  .wa-msg.agent strong { color: #191919; }
+  .wa-msg.agent strong { color: var(--corgi-ink); }
   .risk-high { color: #cc4a00; font-weight: 700; font-size: .8rem; }
-  .risk-med { color: #FF5C00; font-weight: 700; font-size: .8rem; }
+  .risk-med { color: var(--corgi-orange); font-weight: 700; font-size: .8rem; }
   .risk-low { color: #2a7a3a; font-weight: 700; font-size: .8rem; }
   .wa-welcome {
     flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -323,52 +356,46 @@ function widgetMarkup(publicUrl: string, runId: string): string {
   }
   .wa-welcome-icon {
     width: 48px; height: 48px; margin-bottom: .75rem;
-    border-radius: 12px; background: #fff;
-    border: 1px solid #E8E4DC;
+    border-radius: 10px; background: var(--corgi-white);
+    border: 1px solid var(--corgi-line);
     display: flex; align-items: center; justify-content: center;
     overflow: hidden;
   }
   .wa-welcome-icon img { width: 28px; height: 28px; object-fit: contain; }
-  .wa-welcome h4 { font-family: georgia, serif; font-size: 1.15rem; color: #191919; font-weight: 400; margin: 0 0 .35rem; }
+  .wa-welcome h4 { font-family: georgia, serif; font-size: 1.15rem; color: var(--corgi-ink); font-weight: 400; margin: 0 0 .35rem; }
   .wa-welcome p {
-    font-size: .8rem; line-height: 1.55; color: #7B7B7B; margin: 0 0 1rem; max-width: 22rem;
+    font-size: 14px; line-height: 1.55; color: var(--corgi-muted); margin: 0 0 1rem; max-width: 22rem;
   }
   #wa-chips {
-    display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; max-width: 24rem;
+    display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; max-width: 26rem;
   }
   .wa-chip {
-    font-size: .75rem; color: #191919; background: #fff;
-    border: 1px solid #E8E4DC; border-radius: 999px;
-    padding: .4rem .75rem; cursor: pointer; transition: all .15s;
-    white-space: nowrap;
+    height: 35px; min-width: 0; padding: 0 14px;
+    font-size: 14px;
   }
-  .wa-chip:hover { border-color: #FF5C00; color: #FF5C00; }
   .wa-input-wrap {
-    padding: .75rem; border-top: 1px solid #E8E4DC; flex-shrink: 0; background: #fff;
+    padding: .75rem; border-top: 1px solid var(--corgi-line); flex-shrink: 0; background: var(--corgi-white);
   }
   .wa-input-box {
-    display: flex; align-items: flex-end;
-    background: #FDFBF6; border: 1px solid #E8E4DC;
-    border-radius: 14px; overflow: hidden;
-    transition: border-color .2s;
+    display: flex; align-items: center;
+    background: var(--corgi-cream); border: 1px solid var(--corgi-line);
+    border-radius: 10px; overflow: hidden;
+    transition: border-color .12s;
   }
-  .wa-input-box:focus-within { border-color: #191919; }
+  .wa-input-box:focus-within { border-color: var(--corgi-ink); }
   .wa-input-box input {
-    flex: 1; background: transparent; border: 0; color: #191919;
-    padding: .75rem .875rem; outline: none;
-    font: inherit; font-size: .875rem; line-height: 1.5;
-    min-height: 2.75rem;
+    flex: 1; background: transparent; border: 0; color: var(--corgi-ink);
+    padding: .55rem .85rem; outline: none;
+    font: inherit; font-size: 16px; line-height: 1.2; letter-spacing: -0.21px;
+    min-height: 35px;
   }
-  .wa-input-box input::placeholder { color: #9d9d9d; }
-  .wa-input-box button {
-    width: 2.25rem; height: 2.25rem; margin: .25rem .25rem .25rem 0;
-    border-radius: 999px; border: 0;
-    background: #FF5C00; color: #fff; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: background .15s; flex-shrink: 0;
+  .wa-input-box input::placeholder { color: #9e9e9e; }
+  .wa-input-box button.wa-send {
+    min-width: 35px; width: auto; height: 35px; margin: 0;
+    padding: 0 12px; border-radius: 0;
+    border: 0; border-left: 1px solid transparent;
   }
-  .wa-input-box button:hover { background: #FF7D33; }
-  .wa-input-box button svg { width: 14px; height: 14px; }
+  .wa-input-box button.wa-send svg { width: 14px; height: 14px; }
   .wa-run-id { display: none; }
   @media (max-width: 640px) {
     .wa-panel {
@@ -379,8 +406,9 @@ function widgetMarkup(publicUrl: string, runId: string): string {
     .wa-fab { right: .75rem; bottom: .75rem; }
   }
 </style>
-<button class="wa-fab" id="wa-fab" type="button" aria-label="Open chat">
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+<button class="wa-fab wa-btn wa-btn-orange" id="wa-fab" type="button" aria-label="Open chat">
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  <span>Ask Corgi</span>
 </button>
 <div class="wa-panel" id="wa-panel" role="dialog" aria-label="Corgi insurance advisor">
   <div class="wa-hdr">
@@ -399,7 +427,7 @@ function widgetMarkup(publicUrl: string, runId: string): string {
     <p class="wa-a2a-headline">Let your agent get an <em>insurance assessment</em>:</p>
     <div class="wa-a2a-row">
       <span class="wa-a2a-prompt" id="wa-url">${esc(publicUrl)}</span>
-      <button class="wa-a2a-copy" type="button" id="wa-copy-prompt">Copy prompt</button>
+      <button class="wa-btn wa-btn-orange" type="button" id="wa-copy-prompt">Copy prompt</button>
     </div>
   </div>
   <div id="wa-log">
@@ -408,18 +436,18 @@ function widgetMarkup(publicUrl: string, runId: string): string {
       <h4>Business insurance, quoted in minutes.</h4>
       <p>Tell me what your startup does. I’ll map the risks, estimate likelihood, and recommend the Corgi package that fits — with a cost band from the site.</p>
       <div id="wa-chips">
-        <button class="wa-chip" data-q="We are a seed-stage SaaS startup building B2B analytics">Seed SaaS startup</button>
-        <button class="wa-chip" data-q="We are an AI startup building LLM agents, just raised our seed round">AI / LLM startup</button>
-        <button class="wa-chip" data-q="We are a fintech startup processing payments for SMBs">Fintech startup</button>
-        <button class="wa-chip" data-q="We are a health-tech startup handling patient data">Health-tech startup</button>
-        <button class="wa-chip" data-q="What information do I need for a Corgi quote?">How to get a quote</button>
+        <button class="wa-btn wa-btn-white wa-chip" data-q="We are a seed-stage SaaS startup building B2B analytics">Seed SaaS startup</button>
+        <button class="wa-btn wa-btn-white wa-chip" data-q="We are an AI startup building LLM agents, just raised our seed round">AI / LLM startup</button>
+        <button class="wa-btn wa-btn-white wa-chip" data-q="We are a fintech startup processing payments for SMBs">Fintech startup</button>
+        <button class="wa-btn wa-btn-white wa-chip" data-q="We are a health-tech startup handling patient data">Health-tech startup</button>
+        <button class="wa-btn wa-btn-orange wa-chip" data-q="What information do I need for a Corgi quote?">How to get a quote</button>
       </div>
     </div>
   </div>
   <div class="wa-input-wrap">
     <form class="wa-input-box" id="wa-form">
       <input id="wa-text" type="text" placeholder="Tell me about your startup..." autocomplete="off" enterkeyhint="send"/>
-      <button type="submit" aria-label="Send">
+      <button class="wa-btn wa-btn-orange wa-send" type="submit" aria-label="Send">
         <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z"/></svg>
       </button>
     </form>

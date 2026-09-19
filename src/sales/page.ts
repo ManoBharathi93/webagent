@@ -36,8 +36,8 @@ function corgiLandingPage(room: Room, publicUrl: string): string {
       --ink: #191919;
       --muted: #4E4E4E;
       --line: #E8E4DC;
-      --orange: #FF5C00;
-      --orange-hot: #FF7D33;
+      --orange: #ff5c00;
+      --orange-hot: #ff7d33;
       --paper: #FFFFFF;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -57,9 +57,11 @@ function corgiLandingPage(room: Room, publicUrl: string): string {
     .nav-links { display: flex; gap: 1.5rem; font-size: .92rem; color: var(--muted); }
     .nav-links a { text-decoration: none; }
     .nav-cta {
-      background: var(--ink); color: #fff; text-decoration: none;
-      padding: .55rem 1rem; border-radius: 999px; font-size: .85rem; font-weight: 600;
+      background: #191919; color: #fff; text-decoration: none;
+      height: 35px; padding: 0 16px; border-radius: 10px;
+      font-size: 16px; font-weight: 400; letter-spacing: -0.21px; line-height: 35px;
     }
+    .nav-cta:hover { background: #4a4a4a; }
     .hero { padding: 4.5rem 1.5rem 3rem; text-align: center; }
     .hero h1 {
       font-family: georgia, "Times New Roman", serif;
@@ -71,12 +73,15 @@ function corgiLandingPage(room: Room, publicUrl: string): string {
     .hero-ctas { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
     .btn {
       display: inline-flex; align-items: center; justify-content: center;
-      padding: .85rem 1.25rem; border-radius: 999px; text-decoration: none;
-      font-weight: 650; font-size: .95rem;
+      height: 35px; min-width: 112px; padding: 0 16px;
+      border-radius: 10px; text-decoration: none; border: 1px solid transparent;
+      font-weight: 400; font-size: 16px; line-height: 1.2; letter-spacing: -0.21px;
     }
-    .btn-orange { background: var(--orange); color: #fff; }
-    .btn-orange:hover { background: var(--orange-hot); }
-    .btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--ink); }
+    .btn-orange { background: #ff5c00; color: #fff; }
+    .btn-orange:hover { background: #ff7d33; }
+    .btn-orange:active { background: #ff9d66; }
+    .btn-ghost { background: #fff; color: #191919; border-color: #e1e1e1; }
+    .btn-ghost:hover { background: #f9f9f9; }
     .sub { padding: 0 1.5rem 4rem; text-align: center; color: var(--muted); max-width: 46rem; margin: 0 auto; line-height: 1.65; }
     h2 {
       font-family: georgia, "Times New Roman", serif;
