@@ -37,6 +37,7 @@ function corgiLandingPage(room: Room, publicUrl: string): string {
       --muted: #4E4E4E;
       --line: #E8E4DC;
       --orange: #ff5c00;
+      --orange-brand: #FF5C00;
       --orange-hot: #ff7d33;
       --paper: #FFFFFF;
     }
@@ -56,12 +57,36 @@ function corgiLandingPage(room: Room, publicUrl: string): string {
     .logo img { height: 28px; width: auto; }
     .nav-links { display: flex; gap: 1.5rem; font-size: .92rem; color: var(--muted); }
     .nav-links a { text-decoration: none; }
-    .nav-cta {
-      background: #191919; color: #fff; text-decoration: none;
-      height: 35px; padding: 0 16px; border-radius: 10px;
-      font-size: 16px; font-weight: 400; letter-spacing: -0.21px; line-height: 35px;
+    .pressable-smooth-corner { corner-shape: superellipse(1.6); border-radius: 16px; }
+    .pressable-button {
+      --pressable-depth: 4px;
+      display: inline-flex;
+      padding-bottom: var(--pressable-depth);
+      transition-property: padding, margin;
+      transition-duration: 75ms;
+      transition-timing-function: cubic-bezier(.4, 0, .2, 1);
+      user-select: none;
     }
-    .nav-cta:hover { background: #4a4a4a; }
+    .pressable-button:active { margin-top: var(--pressable-depth); padding-bottom: 0; }
+    .pressable-orange { background: #cc4a00; }
+    .pressable-black { background: #626262; }
+    .pressable-white { background: #e1e1e1; }
+    .pressable-face {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 100%; border: 1px solid transparent;
+      height: 35px; min-width: 112px; padding: 0 16px;
+      font-weight: 400; font-size: 16px; line-height: 1.2; letter-spacing: -0.21px;
+      text-decoration: none; white-space: nowrap;
+    }
+    .pressable-face-orange { background: #ff5c00; color: #fff; }
+    .pressable-face-orange:hover { background: #ff7d33; }
+    .pressable-face-orange:active { background: #ff9d66; }
+    .pressable-face-black { background: #191919; color: #fff; }
+    .pressable-face-black:hover { background: #4a4a4a; }
+    .pressable-face-black:active { background: #7b7b7b; }
+    .pressable-face-white { background: #fff; color: #191919; border-color: #e1e1e1; }
+    .pressable-face-white:hover { background: #f9f9f9; }
+    .pressable-face-white:active { background: #ededed; }
     .hero { padding: 4.5rem 1.5rem 3rem; text-align: center; }
     .hero h1 {
       font-family: georgia, "Times New Roman", serif;
@@ -70,18 +95,7 @@ function corgiLandingPage(room: Room, publicUrl: string): string {
       max-width: 16ch; margin: 0 auto .9rem;
     }
     .hero p { color: var(--muted); font-size: 1.08rem; line-height: 1.6; max-width: 38rem; margin: 0 auto 1.6rem; }
-    .hero-ctas { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
-    .btn {
-      display: inline-flex; align-items: center; justify-content: center;
-      height: 35px; min-width: 112px; padding: 0 16px;
-      border-radius: 10px; text-decoration: none; border: 1px solid transparent;
-      font-weight: 400; font-size: 16px; line-height: 1.2; letter-spacing: -0.21px;
-    }
-    .btn-orange { background: #ff5c00; color: #fff; }
-    .btn-orange:hover { background: #ff7d33; }
-    .btn-orange:active { background: #ff9d66; }
-    .btn-ghost { background: #fff; color: #191919; border-color: #e1e1e1; }
-    .btn-ghost:hover { background: #f9f9f9; }
+    .hero-ctas { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; align-items: flex-end; }
     .sub { padding: 0 1.5rem 4rem; text-align: center; color: var(--muted); max-width: 46rem; margin: 0 auto; line-height: 1.65; }
     h2 {
       font-family: georgia, "Times New Roman", serif;
@@ -128,14 +142,20 @@ function corgiLandingPage(room: Room, publicUrl: string): string {
       <a href="https://www.corgi.insure">Resources</a>
       <a href="https://www.corgi.insure">Company</a>
     </div>
-    <a class="nav-cta" href="https://www.corgi.insure">Get a quote</a>
+    <div class="pressable-button pressable-smooth-corner pressable-orange" style="--pressable-depth:4px" data-pressable-variant="orange">
+      <a class="pressable-smooth-corner pressable-face pressable-face-orange" href="https://www.corgi.insure">Get a quote</a>
+    </div>
   </nav>
   <section class="hero">
     <h1>Business Insurance at the Speed of Compute.</h1>
     <p>No confusion, no waiting. Get a quote in minutes. Modular coverage, built for founders by founders.</p>
     <div class="hero-ctas">
-      <a class="btn btn-orange" href="https://www.corgi.insure">Get a quote</a>
-      <a class="btn btn-ghost" href="https://www.corgi.insure/book-a-demo">Book a demo</a>
+      <div class="pressable-button pressable-smooth-corner pressable-orange" style="--pressable-depth:4px" data-pressable-variant="orange">
+        <a class="pressable-smooth-corner pressable-face pressable-face-orange" href="https://www.corgi.insure">Get a quote</a>
+      </div>
+      <div class="pressable-button pressable-smooth-corner pressable-white" style="--pressable-depth:4px" data-pressable-variant="white">
+        <a class="pressable-smooth-corner pressable-face pressable-face-white" href="https://www.corgi.insure/book-a-demo">Book a demo</a>
+      </div>
     </div>
   </section>
   <p class="sub">Corgi is an AI-native, full-stack insurance platform built for technology companies. That means fast quotes, competitive pricing, and a team that understands your business.</p>

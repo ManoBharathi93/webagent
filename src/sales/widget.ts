@@ -22,6 +22,13 @@ export function corgiWidget(publicUrl: string, runId: string): string {
       panel.classList.toggle("open", open);
       fab.innerHTML = open ? CLOSE_ICON + "<span>Close</span>" : OPEN_ICON + "<span>Ask Corgi</span>";
       fab.classList.toggle("active", open);
+      fab.classList.toggle("wa-btn-black", open);
+      fab.classList.toggle("wa-btn-orange", !open);
+      const wrap = document.getElementById("wa-fab-wrap");
+      if (wrap) {
+        wrap.classList.toggle("wa-press-black", open);
+        wrap.classList.toggle("wa-press-orange", !open);
+      }
       fab.setAttribute("aria-label", open ? "Close chat" : "Open chat");
     };
     fab.onclick = () => setOpen(!panel.classList.contains("open"));
@@ -171,7 +178,13 @@ export function corgiWidget(publicUrl: string, runId: string): string {
       if (panel && fab) {
         panel.classList.add("open");
         fab.innerHTML = CLOSE_ICON + "<span>Close</span>";
-        fab.classList.add("active");
+        fab.classList.add("active", "wa-btn-black");
+        fab.classList.remove("wa-btn-orange");
+        const wrap = document.getElementById("wa-fab-wrap");
+        if (wrap) {
+          wrap.classList.add("wa-press-black");
+          wrap.classList.remove("wa-press-orange");
+        }
       }
     }
     bind();
@@ -215,39 +228,57 @@ function widgetMarkup(publicUrl: string, runId: string): string {
     font-family: inherit;
     cursor: pointer;
   }
-  /* Same shape/type as corgi.insure Get insured / Book a demo */
+  /* Exact corgi.insure pressable (Duolingo-style raised) buttons */
+  #wa-root .wa-press {
+    --pressable-depth: 4px;
+    display: inline-flex;
+    background: #cc4a00;
+    padding-bottom: var(--pressable-depth);
+    border-radius: 16px;
+    corner-shape: superellipse(1.6);
+    transition-property: padding, margin;
+    transition-duration: 75ms;
+    transition-timing-function: cubic-bezier(.4, 0, .2, 1);
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #wa-root .wa-press:active {
+    margin-top: var(--pressable-depth);
+    padding-bottom: 0;
+  }
+  #wa-root .wa-press-orange { background: #cc4a00; }
+  #wa-root .wa-press-black { background: #626262; }
+  #wa-root .wa-press-white { background: #e1e1e1; }
   #wa-root .wa-btn {
     display: inline-flex; align-items: center; justify-content: center;
-    border: 1px solid transparent; border-radius: 10px;
+    width: 100%;
+    border: 1px solid transparent;
+    border-radius: 16px;
+    corner-shape: superellipse(1.6);
     height: 35px; min-width: 96px; padding: 0 16px;
     font-size: 16px; font-weight: 400; line-height: 1.2; letter-spacing: -0.21px;
-    white-space: nowrap; transition: background .12s ease, color .12s ease, border-color .12s ease;
+    white-space: nowrap;
+    background: transparent;
+    appearance: none; -webkit-appearance: none;
   }
-  #wa-root .wa-btn-orange {
-    background: var(--corgi-orange); color: #fff;
-  }
-  #wa-root .wa-btn-orange:hover { background: var(--corgi-orange-hover); }
-  #wa-root .wa-btn-orange:active { background: var(--corgi-orange-active); }
-  #wa-root .wa-btn-black {
-    background: var(--corgi-ink); color: #fff;
-  }
-  #wa-root .wa-btn-black:hover { background: var(--corgi-ink-hover); }
-  #wa-root .wa-btn-black:active { background: var(--corgi-ink-active); }
+  #wa-root .wa-btn-orange { background: #ff5c00; color: #fff; }
+  #wa-root .wa-btn-orange:hover { background: #ff7d33; }
+  #wa-root .wa-btn-orange:active { background: #ff9d66; }
+  #wa-root .wa-btn-black { background: #191919; color: #fff; }
+  #wa-root .wa-btn-black:hover { background: #4a4a4a; }
+  #wa-root .wa-btn-black:active { background: #7b7b7b; }
   #wa-root .wa-btn-white {
-    background: var(--corgi-white); color: var(--corgi-ink); border-color: var(--corgi-line);
+    background: #fff; color: #191919; border-color: #e1e1e1;
   }
   #wa-root .wa-btn-white:hover { background: #f9f9f9; }
   #wa-root .wa-btn-white:active { background: #ededed; }
+  .wa-fab-wrap {
+    position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 2147483001;
+  }
   .wa-fab {
-    position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 2147483000;
     gap: .4rem;
     box-shadow: none;
   }
-  .wa-fab.active {
-    background: var(--corgi-ink);
-  }
-  .wa-fab.active:hover { background: var(--corgi-ink-hover); }
-  .wa-fab.active:active { background: var(--corgi-ink-active); }
   .wa-fab svg { width: 15px; height: 15px; flex-shrink: 0; }
   .wa-panel {
     position: fixed; right: 1.25rem; bottom: 4.6rem; z-index: 2147483000;
@@ -376,26 +407,29 @@ function widgetMarkup(publicUrl: string, runId: string): string {
   .wa-input-wrap {
     padding: .75rem; border-top: 1px solid var(--corgi-line); flex-shrink: 0; background: var(--corgi-white);
   }
+  .wa-form {
+    display: flex; align-items: flex-end; gap: .5rem;
+  }
   .wa-input-box {
-    display: flex; align-items: center;
+    flex: 1; display: flex; align-items: center;
     background: var(--corgi-cream); border: 1px solid var(--corgi-line);
-    border-radius: 10px; overflow: hidden;
+    border-radius: 16px; overflow: hidden;
     transition: border-color .12s;
+    min-height: 35px;
   }
   .wa-input-box:focus-within { border-color: var(--corgi-ink); }
   .wa-input-box input {
     flex: 1; background: transparent; border: 0; color: var(--corgi-ink);
-    padding: .55rem .85rem; outline: none;
+    padding: .45rem .85rem; outline: none;
     font: inherit; font-size: 16px; line-height: 1.2; letter-spacing: -0.21px;
     min-height: 35px;
   }
   .wa-input-box input::placeholder { color: #9e9e9e; }
-  .wa-input-box button.wa-send {
-    min-width: 35px; width: auto; height: 35px; margin: 0;
-    padding: 0 12px; border-radius: 0;
-    border: 0; border-left: 1px solid transparent;
+  .wa-send-wrap { flex-shrink: 0; }
+  #wa-root .wa-send {
+    min-width: 35px; width: 35px; height: 35px; padding: 0;
   }
-  .wa-input-box button.wa-send svg { width: 14px; height: 14px; }
+  #wa-root .wa-send svg { width: 14px; height: 14px; }
   .wa-run-id { display: none; }
   @media (max-width: 640px) {
     .wa-panel {
@@ -403,13 +437,15 @@ function widgetMarkup(publicUrl: string, runId: string): string {
       width: 100%; height: 100%;
       border-radius: 0; border: 0;
     }
-    .wa-fab { right: .75rem; bottom: .75rem; }
+    .wa-fab-wrap { right: .75rem; bottom: .75rem; }
   }
 </style>
-<button class="wa-fab wa-btn wa-btn-orange" id="wa-fab" type="button" aria-label="Open chat">
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-  <span>Ask Corgi</span>
-</button>
+<div class="wa-press wa-press-orange wa-fab-wrap" id="wa-fab-wrap" style="--pressable-depth:4px">
+  <button class="wa-fab wa-btn wa-btn-orange" id="wa-fab" type="button" aria-label="Open chat">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    <span>Ask Corgi</span>
+  </button>
+</div>
 <div class="wa-panel" id="wa-panel" role="dialog" aria-label="Corgi insurance advisor">
   <div class="wa-hdr">
     <div class="wa-hdr-left">
@@ -427,7 +463,9 @@ function widgetMarkup(publicUrl: string, runId: string): string {
     <p class="wa-a2a-headline">Let your agent get an <em>insurance assessment</em>:</p>
     <div class="wa-a2a-row">
       <span class="wa-a2a-prompt" id="wa-url">${esc(publicUrl)}</span>
-      <button class="wa-btn wa-btn-orange" type="button" id="wa-copy-prompt">Copy prompt</button>
+      <div class="wa-press wa-press-orange" style="--pressable-depth:4px">
+        <button class="wa-btn wa-btn-orange" type="button" id="wa-copy-prompt">Copy prompt</button>
+      </div>
     </div>
   </div>
   <div id="wa-log">
@@ -436,20 +474,24 @@ function widgetMarkup(publicUrl: string, runId: string): string {
       <h4>Business insurance, quoted in minutes.</h4>
       <p>Tell me what your startup does. I’ll map the risks, estimate likelihood, and recommend the Corgi package that fits — with a cost band from the site.</p>
       <div id="wa-chips">
-        <button class="wa-btn wa-btn-white wa-chip" data-q="We are a seed-stage SaaS startup building B2B analytics">Seed SaaS startup</button>
-        <button class="wa-btn wa-btn-white wa-chip" data-q="We are an AI startup building LLM agents, just raised our seed round">AI / LLM startup</button>
-        <button class="wa-btn wa-btn-white wa-chip" data-q="We are a fintech startup processing payments for SMBs">Fintech startup</button>
-        <button class="wa-btn wa-btn-white wa-chip" data-q="We are a health-tech startup handling patient data">Health-tech startup</button>
-        <button class="wa-btn wa-btn-orange wa-chip" data-q="What information do I need for a Corgi quote?">How to get a quote</button>
+        <div class="wa-press wa-press-white" style="--pressable-depth:4px"><button class="wa-btn wa-btn-white wa-chip" data-q="We are a seed-stage SaaS startup building B2B analytics">Seed SaaS startup</button></div>
+        <div class="wa-press wa-press-white" style="--pressable-depth:4px"><button class="wa-btn wa-btn-white wa-chip" data-q="We are an AI startup building LLM agents, just raised our seed round">AI / LLM startup</button></div>
+        <div class="wa-press wa-press-white" style="--pressable-depth:4px"><button class="wa-btn wa-btn-white wa-chip" data-q="We are a fintech startup processing payments for SMBs">Fintech startup</button></div>
+        <div class="wa-press wa-press-white" style="--pressable-depth:4px"><button class="wa-btn wa-btn-white wa-chip" data-q="We are a health-tech startup handling patient data">Health-tech startup</button></div>
+        <div class="wa-press wa-press-orange" style="--pressable-depth:4px"><button class="wa-btn wa-btn-orange wa-chip" data-q="What information do I need for a Corgi quote?">How to get a quote</button></div>
       </div>
     </div>
   </div>
   <div class="wa-input-wrap">
-    <form class="wa-input-box" id="wa-form">
-      <input id="wa-text" type="text" placeholder="Tell me about your startup..." autocomplete="off" enterkeyhint="send"/>
-      <button class="wa-btn wa-btn-orange wa-send" type="submit" aria-label="Send">
-        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z"/></svg>
-      </button>
+    <form class="wa-form" id="wa-form">
+      <div class="wa-input-box">
+        <input id="wa-text" type="text" placeholder="Tell me about your startup..." autocomplete="off" enterkeyhint="send"/>
+      </div>
+      <div class="wa-press wa-press-orange wa-send-wrap" style="--pressable-depth:4px">
+        <button class="wa-btn wa-btn-orange wa-send" type="submit" aria-label="Send">
+          <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z"/></svg>
+        </button>
+      </div>
     </form>
   </div>
   <span class="wa-run-id">${esc(runId)}</span>

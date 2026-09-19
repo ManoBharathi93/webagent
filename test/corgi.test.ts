@@ -207,6 +207,12 @@ describe("corgi host routing", () => {
     expect(html).toContain("#ff7d33");
     expect(html).toContain("#191919");
     expect(html).toContain("wa-btn-orange");
+    expect(html).toContain("wa-press");
+    expect(html).toContain("--pressable-depth:4px");
+    expect(html).toContain("superellipse(1.6)");
+    expect(html).toContain("#cc4a00");
+    expect(html).toContain("#626262");
+    expect(html).toContain("#e1e1e1");
     expect(html).toContain("Ask Corgi");
   });
 
