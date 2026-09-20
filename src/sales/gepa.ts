@@ -36,12 +36,19 @@ export function scorePrompt(text: string): GoalScore {
   const t = text.toLowerCase();
   return {
     discover: hit(t, [/categor(y|ies)/, /what (the |your )?startup does/, /saas|fintech|health-tech/, /one question/]),
-    risks: hit(t, [/risk factor|vulnerabilit/, /risks:/, /map_risks|highlight/]),
-    penalty: hit(t, [/penalt/, /if (you )?skip insurance|uninsured|not insured/, /lawsuit|lost deal|coi/]),
-    social: hit(t, [/customer|intryc|competitor|similar (problem|company)/, /using corgi|already uses/]),
-    report: hit(t, [/pinpoint report|for you:/, /best fit:/, /do this next/]),
+    risks: hit(t, [/vulnerabilit/, /what'?s at risk|risks:/, /map_risks|highlight/]),
+    penalty: hit(t, [/penalt|skip insurance|uninsured|not insured/, /lawsuit|lost deal|coi/]),
+    social: hit(t, [
+      /customer|intryc|competitor|similar (problem|company)/,
+      /using corgi|already uses|why (choose|pick) corgi|quote in minutes/,
+    ]),
+    report: hit(t, [
+      /what'?s at risk|short pitch/,
+      /how corgi (will )?(cover|insure)/,
+      /contact details|name and (best )?email/,
+    ]),
     grounded: hit(t, [/do not invent|from the pack|only from/, /no (fake|invented) (price|customer|lawsuit)/]),
-    short: hit(t, [/200 words|180 words|short/, /no tool (names|json)/, /one link/]),
+    short: hit(t, [/80 words|100 words|crisp|simplest|plain (words|language)|short/, /no tool (names|json)/, /one link/]),
     inquisitive: hit(t, [
       /one question per turn|ask one|ask smart/,
       /what (does|made|triggered)|why now|what stage/,
@@ -99,13 +106,14 @@ function reflect(cands: PromptCand[]): { id: string; text: string }[] {
   const extra = missing
     .map((g) => {
       if (g === "discover") return "Ask category and what the startup does. One question per turn.";
-      if (g === "risks") return "After both answers, call map_risks and highlight those risk factors and vulnerabilities.";
-      if (g === "penalty") return "Show penalties if they are not insured: lost deal, lawsuit, delayed COI. Pack only.";
-      if (g === "social") return "Name one similar company with that problem, or a competitor-category customer already using Corgi. Pack only.";
-      if (g === "report") return "Reply with one short pinpoint report: For you / Vulnerabilities / If you skip insurance / Who / Best fit / Do this next.";
+      if (g === "risks") return "After both answers, call map_risks and name the vulnerabilities in plain words.";
+      if (g === "penalty") return "Show the penalty if they skip insurance: lost deal, lawsuit, delayed COI. Pack only.";
+      if (g === "social") return "Name one similar company already using Corgi. Quote in minutes. Pack only.";
+      if (g === "report")
+        return "Reply with one short pitch: What's at risk / How Corgi covers it / Why Corgi / then ask for contact details (name and email).";
       if (g === "grounded") return "Do not invent prices, customers, lawsuits, or penalties. If the pack has no match, say so.";
-      if (g === "inquisitive") return "Be inquisitive — ask one smart question per turn with a brief reason why you are asking. Discovery sequence: what they do, stage, category, why now, headcount, existing coverage.";
-      return "Keep the whole report under 200 words. No tool names. No JSON. One link.";
+      if (g === "inquisitive") return "Be inquisitive — ask one smart question per turn with a brief reason why you are asking. Discovery sequence: what they do, stage, category, why now.";
+      return "Keep the whole pitch under 80 words. Crisp. Simplest language. No tool names. No JSON. One link.";
     })
     .join("\n");
   return [
@@ -114,9 +122,10 @@ function reflect(cands: PromptCand[]): { id: string; text: string }[] {
       id: "reflect-tight",
       text: [
         best.text,
-        "The only user-visible reply after discovery is the pinpoint report. 200 words or fewer.",
+        "The only user-visible reply after discovery is the short pitch. 80 words or fewer. Simplest language.",
         "Do not invent. One similar company or one Corgi customer from the pack.",
         "Be inquisitive — ask one smart question per turn with a brief reason why.",
+        "Ask for contact details (name and email) at the end.",
       ].join("\n"),
     },
   ];

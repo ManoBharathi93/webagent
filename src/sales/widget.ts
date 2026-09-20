@@ -468,7 +468,7 @@ function widgetMarkup(publicUrl: string, runId: string): string {
     </div>
   </div>
   <div class="wa-a2a">
-    <p class="wa-a2a-headline">Let your agent get an <em>insurance assessment</em>:</p>
+    <p class="wa-a2a-headline">Let your agent get a <em>short risk pitch</em>:</p>
     <div class="wa-a2a-row">
       <span class="wa-a2a-prompt" id="wa-url">${esc(publicUrl)}</span>
       <div class="wa-press wa-press-orange" style="--pressable-depth:4px">
@@ -480,7 +480,7 @@ function widgetMarkup(publicUrl: string, runId: string): string {
     <div class="wa-welcome" id="wa-welcome">
       <div class="wa-welcome-icon"><img src="/images/corgi logo vector.svg" alt=""/></div>
       <h4>Business insurance, quoted in minutes.</h4>
-      <p>Tell me what your startup does. I’ll map the risks, estimate likelihood, and recommend the Corgi package that fits — with a cost band from the site.</p>
+      <p>Tell me what your startup does. I'll say what's at risk, how Corgi covers it, and ask for your email so we can send a quote.</p>
       <div id="wa-chips">
         <div class="wa-press wa-press-white" style="--pressable-depth:4px"><button class="wa-btn wa-btn-white wa-chip" data-q="We are a seed-stage SaaS startup building B2B analytics">Seed SaaS startup</button></div>
         <div class="wa-press wa-press-white" style="--pressable-depth:4px"><button class="wa-btn wa-btn-white wa-chip" data-q="We are an AI startup building LLM agents, just raised our seed round">AI / LLM startup</button></div>

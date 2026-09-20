@@ -40,9 +40,10 @@ describe("map_risks and report", () => {
     expect(note.penalties.length).toBeGreaterThan(0);
     expect(note.proof.name).toMatch(/Imagine AI/i);
     const text = reportText(note);
-    expect(text).toContain("**For you:**");
-    expect(text).toContain("**If you skip insurance:**");
-    expect(text).toContain("**Do this next:**");
+    expect(text).toContain("What's at risk:");
+    expect(text).toContain("How Corgi covers it:");
+    expect(text).toContain("Why Corgi:");
+    expect(text).toContain("name and best email");
     expect(text.length).toBeLessThan(1800);
   });
 
@@ -60,7 +61,8 @@ describe("attachSales", () => {
     const pack = buildPack(emptyCrawl());
     const run = attachSales(h, pack, { model: "echo" });
     const sys = run.getContext().find((m) => m.role === "system")!.content;
-    expect(sys).toContain("pinpoint report");
+    expect(sys).toContain("short pitch");
+    expect(sys).toContain("contact details");
     expect(sys).toContain(pack.origin);
     expect(run.listTools().some((t) => t.name === "map_risks")).toBe(true);
     expect(salesInstruction(pack)).toContain("map_risks");

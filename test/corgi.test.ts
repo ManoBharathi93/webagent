@@ -115,22 +115,23 @@ describe("vulnerability assessment", () => {
 });
 
 describe("vulnerability report text", () => {
-  test("vulnerability report includes likelihood and coverage", () => {
+  test("vulnerability report is a short pitch with coverage and a contact ask", () => {
     const note = mapRisks({ category: "AI", does: "LLM agents" });
     const report = vulnerabilityReport(note);
-    expect(report).toContain("HIGH");
-    expect(report).toContain("MEDIUM");
-    expect(report).toContain("Covered by:");
-    expect(report).toContain("typical limit:");
-    expect(report).toContain("Estimated annual premium:");
-    expect(report).toContain("Recommended Package");
+    expect(report).toContain("What's at risk:");
+    expect(report).toContain("How Corgi covers it:");
+    expect(report).toContain("Why Corgi:");
+    expect(report).toContain("name and best email");
+    expect(report).toContain("$");
+    expect(report).toContain("Tech E&O");
   });
 
-  test("pinpoint report includes estimated premium", () => {
+  test("short pitch includes estimated premium and contact ask", () => {
     const note = mapRisks({ category: "SaaS", does: "B2B analytics" });
     const report = reportText(note);
-    expect(report).toContain("**Estimated premium:**");
+    expect(report).toContain("How Corgi covers it:");
     expect(report).toContain("$");
+    expect(report).toContain("name and best email");
   });
 });
 
@@ -224,6 +225,8 @@ describe("corgi host routing", () => {
     expect(html).toContain("Ask Corgi");
     expect(html).toContain("lastText");
     expect(html).toContain("Go talk to the Corgi agent");
+    expect(html).toContain("what's at risk");
+    expect(html).toContain("ask for your email");
     expect(html).not.toContain("You reached Corgi");
   });
 
@@ -355,6 +358,9 @@ describe("sales prompt GEPA scoring", () => {
     expect(score.discover).toBeGreaterThan(0.5);
     expect(score.risks).toBeGreaterThan(0);
     expect(score.report).toBeGreaterThan(0);
+    expect(score.short).toBeGreaterThan(0.5);
+    expect(SALES_V2.toLowerCase()).toContain("contact details");
+    expect(SALES_V2.toLowerCase()).toContain("how corgi will insure");
   });
 });
 

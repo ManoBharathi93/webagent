@@ -407,50 +407,35 @@ export function mapRisks(ask: RiskAsk): RiskNote {
   return { category: ask.category, does: ask.does, stage: ask.stage, ...FALLBACK };
 }
 
+function whyCorgi(note: RiskNote): string {
+  if (note.proof.kind === "none") {
+    return "Founders like you already buy this stack on Corgi. Quote in minutes. No broker wait.";
+  }
+  return `${note.proof.name} is in the same boat and already uses Corgi. Quote in minutes. No broker wait.`;
+}
+
+function skipCost(note: RiskNote): string {
+  return note.penalties[0] ?? "Skip this and a customer can stall the deal until you show a COI.";
+}
+
+function riskBullets(note: RiskNote): string[] {
+  const fromVuln = note.vulnerabilities.slice(0, 3).map((v) => `- ${v.risk}. Corgi covers this with ${v.coverageLine}.`);
+  if (fromVuln.length > 0) return fromVuln;
+  return note.risks.slice(0, 3).map((r) => `- ${r}`);
+}
+
+/** Short pitch the model should copy: risks, how Corgi covers, why choose, ask for contact. */
 export function reportText(note: RiskNote): string {
-  const proof =
-    note.proof.kind === "none"
-      ? "No close match on the crawled pages."
-      : `${note.proof.name} — ${note.proof.why}`;
   return [
-    `**For you:** ${note.does || "(what you build)"} · ${note.category || "(category)"}`,
-    `**Risks:**`,
-    ...note.risks.slice(0, 3).map((r) => `- ${r}`),
-    `**If you skip insurance:**`,
-    ...note.penalties.slice(0, 2).map((r) => `- ${r}`),
-    `**Who:** ${proof}`,
-    `**Best fit:** ${note.offer} (${note.lines.join(", ")})`,
-    `**Cost band (site, not a bind):** ${note.costBand}`,
-    `**Estimated premium:** ${note.estimatedPremium}`,
-    `**Do this next:** ${note.next.label} — ${note.next.url}`,
+    "What's at risk:",
+    ...riskBullets(note),
+    `How Corgi covers it: ${note.lines.join(", ")}. About ${note.estimatedPremium}.`,
+    `Why Corgi: ${whyCorgi(note)} ${skipCost(note)}`,
+    "What's your name and best email? I'll have someone send the quote.",
+    note.next.url,
   ].join("\n");
 }
 
 export function vulnerabilityReport(note: RiskNote): string {
-  const lines: string[] = [
-    `## Insurance Assessment: ${note.does || "your startup"} (${note.category || "tech"})`,
-    "",
-    "### Vulnerabilities & Likelihood",
-    "",
-  ];
-  for (const v of note.vulnerabilities) {
-    const icon = v.likelihood === "high" ? "HIGH" : v.likelihood === "medium" ? "MEDIUM" : "LOW";
-    lines.push(`- **[${icon}]** ${v.risk}`);
-    lines.push(`  Chance: ${v.pctChance}`);
-    lines.push(`  Covered by: ${v.coverageLine} (typical limit: ${v.typicalLimit})`);
-    lines.push("");
-  }
-  lines.push("### Recommended Package");
-  lines.push("");
-  lines.push(`**${note.offer}**`);
-  lines.push(`Coverage lines: ${note.lines.join(", ")}`);
-  lines.push(`Estimated annual premium: ${note.estimatedPremium}`);
-  lines.push("");
-  const proof =
-    note.proof.kind === "none"
-      ? ""
-      : `Similar company on Corgi: ${note.proof.name} — ${note.proof.why}\n`;
-  if (proof) lines.push(proof);
-  lines.push(`**Next step:** ${note.next.label} — ${note.next.url}`);
-  return lines.join("\n");
+  return reportText(note);
 }
