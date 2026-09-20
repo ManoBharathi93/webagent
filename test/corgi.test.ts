@@ -12,6 +12,7 @@ import {
   corgiConnectPrompt,
   corgiHost,
   Sessions,
+  speedCorgiHtml,
 } from "../src/sales/index.ts";
 import { Room } from "../src/host/room.ts";
 import { scorePrompt } from "../src/sales/gepa.ts";
@@ -305,6 +306,23 @@ describe("corgi host routing", () => {
     const logo = await fetchFn(new Request("http://t/images/corgi%20logo%20vector.svg"));
     expect(logo.ok).toBe(true);
     expect(logo.headers.get("content-type")).toContain("svg");
+    const gz = await fetchFn(
+      new Request("http://t/images/corgi%20logo%20vector.svg", { headers: { "Accept-Encoding": "gzip" } }),
+    );
+    expect(gz.headers.get("content-encoding")).toBe("gzip");
+    expect(gz.headers.get("cache-control") ?? "").toContain("max-age");
+  });
+
+  test("speedCorgiHtml collapses image optimizer URLs and drops trackers", () => {
+    const raw =
+      '<img src="/_next/image?url=%2Fimages%2Fhero.webp&amp;w=640&amp;q=75" srcset="/_next/image?url=%2Fimages%2Fhero.webp&amp;w=750&amp;q=75 750w"/>' +
+      '<script src="https://www.googletagmanager.com/gtag/js?id=G-X"></script>' +
+      '<script src="/_next/static/chunks/app.js"></script>';
+    const out = speedCorgiHtml(raw);
+    expect(out).toContain("/images/hero.webp");
+    expect(out).not.toContain("/_next/image");
+    expect(out).not.toContain("googletagmanager");
+    expect(out).toContain("/_next/static/chunks/app.js");
   });
 
   test("GET /llms.txt returns connect prompt", async () => {

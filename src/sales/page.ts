@@ -1,19 +1,24 @@
 import type { Room } from "../host/room.ts";
-import { hasCorgiSnapshot, readCorgiIndex } from "./site.ts";
+import { gzipBody, hasCorgiSnapshot, readCorgiIndex } from "./site.ts";
 import { corgiWidget } from "./widget.ts";
 
 export { hasCorgiSnapshot } from "./site.ts";
 
-export function corgiChatPage(room: Room, publicUrl: string): Response {
+export function corgiChatPage(room: Room, publicUrl: string, req?: Request): Response {
   const html = hasCorgiSnapshot()
     ? inject(readCorgiIndex(), corgiWidget(publicUrl, room.run.id))
     : corgiLandingPage(room, publicUrl);
-  return new Response(html, {
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      Link: `<${publicUrl}/.well-known/agent-card.json>; rel="describedby"; type="application/json"`,
-    },
-  });
+  const packed = gzipBody(html, req);
+  const headers: Record<string, string> = {
+    "Content-Type": "text/html; charset=utf-8",
+    Link: `<${publicUrl}/.well-known/agent-card.json>; rel="describedby"; type="application/json"`,
+    "Cache-Control": "public, max-age=60",
+  };
+  if (packed.encoding) {
+    headers["Content-Encoding"] = packed.encoding;
+    headers.Vary = "Accept-Encoding";
+  }
+  return new Response(packed.body as BodyInit, { headers });
 }
 
 function inject(html: string, widget: string): string {

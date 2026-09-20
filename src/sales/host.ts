@@ -111,7 +111,7 @@ async function route(
   }
 
   if ((req.method === "GET" || req.method === "HEAD") && url.pathname !== "/") {
-    const asset = corgiSiteResponse(url);
+    const asset = corgiSiteResponse(url, req);
     if (asset) return asset;
   }
 
@@ -131,7 +131,7 @@ async function route(
       const sid = existingSession(req, sessions);
       return jsonCard(base, lobby, sid ?? undefined);
     }
-    return corgiChatPage(lobby, base);
+    return corgiChatPage(lobby, base, req);
   }
 
   if (url.pathname === "/" && req.method === "POST" && kind === "machine") {

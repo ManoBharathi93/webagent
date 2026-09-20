@@ -3,7 +3,7 @@ export { corgiAgentCard, corgiConnectPrompt } from "./card.ts";
 export { runGepa, scorePrompt, onFront, type GoalScore, type PromptCand } from "./gepa.ts";
 export { corgiHost } from "./host.ts";
 export { corgiChatPage } from "./page.ts";
-export { corgiSiteResponse, hasCorgiSnapshot } from "./site.ts";
+export { corgiSiteResponse, hasCorgiSnapshot, speedCorgiHtml } from "./site.ts";
 export { salesInstruction, SALES_PROMPT_ID, SALES_PROMPT_MEAN, SALES_GEPA, corgiPublicDescription, corgiPublicInstructions } from "./prompt.ts";
 export { mapRisks, reportText, vulnerabilityReport, type RiskNote, type RiskAsk, type Vulnerability } from "./risks.ts";
 export { Sessions } from "./sessions.ts";
