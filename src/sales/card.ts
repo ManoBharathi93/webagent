@@ -6,8 +6,8 @@ import type { Room } from "../host/room.ts";
 const DEFAULT_NAME = "Corgi";
 const DEFAULT_DESCRIPTION =
   "Startup insurance advisor. Tell me what your startup does. I will name your vulnerabilities " +
-  "in plain words, how Corgi will insure them, and why founders pick Corgi — then ask for your " +
-  "contact details. Quote in minutes at corgi.insure.";
+  "in plain words, the usual chance of each, what it can cost if you are not insured, how Corgi " +
+  "will insure them, and why founders pick Corgi — then ask for your contact details. Quote in minutes at corgi.insure.";
 
 /** Short line the chat "Copy prompt" button puts on the clipboard. */
 export function corgiCopyPrompt(base: string): string {
@@ -37,7 +37,8 @@ export function corgiConnectPrompt(base: string, session?: string): string {
     "In the first POST, say what your startup does, your stage (seed, Series A, etc.),",
     "and your industry (SaaS, AI, fintech, health-tech, etc.).",
     "The advisor will ask 1–2 follow-up questions, then give a short pitch:",
-    "vulnerabilities, how Corgi covers them, why choose Corgi, and ask for contact details.",
+    "vulnerabilities, usual chance of each, what it can cost if not insured,",
+    "how Corgi covers them, why choose Corgi, and ask for contact details.",
     "",
     "POST " + chat,
     "Content-Type: application/json",
@@ -76,7 +77,8 @@ export function corgiAgentCard(base: string, room: Room, session?: string) {
         name: "Vulnerability & risk assessment",
         description:
           "Given your startup's industry and product, name the vulnerabilities in plain words, " +
-          "how Corgi will insure them, why founders pick Corgi, and ask for contact details.",
+          "the usual chance of each, what it can cost if not insured, how Corgi will insure them, " +
+          "why founders pick Corgi, and ask for contact details.",
         tags: ["insurance", "risk", "startup"],
         examples: [
           "We are a seed-stage AI startup building LLM agents for customer support.",

@@ -43,8 +43,10 @@ describe("map_risks and report", () => {
     expect(text).toContain("What's at risk:");
     expect(text).toContain("How Corgi covers it:");
     expect(text).toContain("Why Corgi:");
+    expect(text).toContain("If you are not insured:");
+    expect(text).toContain("Usually");
     expect(text).toContain("name and best email");
-    expect(text.length).toBeLessThan(1800);
+    expect(text.length).toBeLessThan(2400);
   });
 
   test("SaaS seed maps to Intryc and a seed stack", () => {
@@ -63,6 +65,7 @@ describe("attachSales", () => {
     const sys = run.getContext().find((m) => m.role === "system")!.content;
     expect(sys).toContain("short pitch");
     expect(sys).toContain("contact details");
+    expect(sys).toContain("not insured");
     expect(sys).toContain(pack.origin);
     expect(run.listTools().some((t) => t.name === "map_risks")).toBe(true);
     expect(salesInstruction(pack)).toContain("map_risks");

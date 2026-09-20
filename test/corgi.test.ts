@@ -121,17 +121,23 @@ describe("vulnerability report text", () => {
     expect(report).toContain("What's at risk:");
     expect(report).toContain("How Corgi covers it:");
     expect(report).toContain("Why Corgi:");
+    expect(report).toContain("If you are not insured:");
+    expect(report).toContain("Usually");
     expect(report).toContain("name and best email");
     expect(report).toContain("$");
     expect(report).toContain("Tech E&O");
+    expect(note.vulnerabilities[0] && report.includes(note.vulnerabilities[0].pctChance)).toBe(true);
   });
 
-  test("short pitch includes estimated premium and contact ask", () => {
+  test("short pitch includes estimated premium, chance, uninsured cost, and contact ask", () => {
     const note = mapRisks({ category: "SaaS", does: "B2B analytics" });
     const report = reportText(note);
     expect(report).toContain("How Corgi covers it:");
     expect(report).toContain("$");
     expect(report).toContain("name and best email");
+    expect(report).toContain("If you are not insured:");
+    expect(report).toContain("Usually");
+    expect(report).toMatch(/15–20%|25–30%/);
   });
 });
 
@@ -226,6 +232,7 @@ describe("corgi host routing", () => {
     expect(html).toContain("lastText");
     expect(html).toContain("Go talk to the Corgi agent");
     expect(html).toContain("what's at risk");
+    expect(html).toContain("not insured");
     expect(html).toContain("ask for your email");
     expect(html).not.toContain("You reached Corgi");
   });
@@ -361,6 +368,9 @@ describe("sales prompt GEPA scoring", () => {
     expect(score.short).toBeGreaterThan(0.5);
     expect(SALES_V2.toLowerCase()).toContain("contact details");
     expect(SALES_V2.toLowerCase()).toContain("how corgi will insure");
+    expect(SALES_V2.toLowerCase()).toContain("not insured");
+    expect(SALES_V2.toLowerCase()).toContain("probability");
+    expect(score.penalty).toBeGreaterThan(0.5);
   });
 });
 

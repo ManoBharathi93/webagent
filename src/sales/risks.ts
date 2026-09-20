@@ -414,23 +414,34 @@ function whyCorgi(note: RiskNote): string {
   return `${note.proof.name} is in the same boat and already uses Corgi. Quote in minutes. No broker wait.`;
 }
 
-function skipCost(note: RiskNote): string {
-  return note.penalties[0] ?? "Skip this and a customer can stall the deal until you show a COI.";
+function billIfUninsured(limit: string): string {
+  return limit.replace(/\s*per occurrence/i, "").replace(/\s*aggregate/i, "").replace(/\s*each$/i, "").trim();
+}
+
+function skipCosts(note: RiskNote): string[] {
+  const lines = note.penalties.slice(0, 2);
+  if (lines.length > 0) return lines.map((p) => `- ${p}`);
+  return ["- A customer can stall the deal until you show a COI, and a claim can hit you personally."];
 }
 
 function riskBullets(note: RiskNote): string[] {
-  const fromVuln = note.vulnerabilities.slice(0, 3).map((v) => `- ${v.risk}. Corgi covers this with ${v.coverageLine}.`);
+  const fromVuln = note.vulnerabilities.slice(0, 3).map((v) => {
+    const bill = billIfUninsured(v.typicalLimit);
+    return `- ${v.risk}. Usually ${v.pctChance}. If you are not insured, that can cost you ${bill}.`;
+  });
   if (fromVuln.length > 0) return fromVuln;
   return note.risks.slice(0, 3).map((r) => `- ${r}`);
 }
 
-/** Short pitch the model should copy: risks, how Corgi covers, why choose, ask for contact. */
+/** Short pitch the model should copy: risks + chance + uninsured cost, cover, why, contact. */
 export function reportText(note: RiskNote): string {
   return [
     "What's at risk:",
     ...riskBullets(note),
+    "If you are not insured:",
+    ...skipCosts(note),
     `How Corgi covers it: ${note.lines.join(", ")}. About ${note.estimatedPremium}.`,
-    `Why Corgi: ${whyCorgi(note)} ${skipCost(note)}`,
+    `Why Corgi: ${whyCorgi(note)}`,
     "What's your name and best email? I'll have someone send the quote.",
     note.next.url,
   ].join("\n");

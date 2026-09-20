@@ -480,7 +480,7 @@ function widgetMarkup(publicUrl: string, runId: string): string {
     <div class="wa-welcome" id="wa-welcome">
       <div class="wa-welcome-icon"><img src="/images/corgi logo vector.svg" alt=""/></div>
       <h4>Business insurance, quoted in minutes.</h4>
-      <p>Tell me what your startup does. I'll say what's at risk, how Corgi covers it, and ask for your email so we can send a quote.</p>
+      <p>Tell me what your startup does. I'll say what's at risk, how often it happens, what it can cost if you are not insured, and how Corgi covers it — then ask for your email so we can send a quote.</p>
       <div id="wa-chips">
         <div class="wa-press wa-press-white" style="--pressable-depth:4px"><button class="wa-btn wa-btn-white wa-chip" data-q="We are a seed-stage SaaS startup building B2B analytics">Seed SaaS startup</button></div>
         <div class="wa-press wa-press-white" style="--pressable-depth:4px"><button class="wa-btn wa-btn-white wa-chip" data-q="We are an AI startup building LLM agents, just raised our seed round">AI / LLM startup</button></div>
