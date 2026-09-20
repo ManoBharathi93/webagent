@@ -1,8 +1,8 @@
-import { corgiConnectPrompt } from "./card.ts";
+import { corgiCopyPrompt } from "./card.ts";
 
 /** Floating chat widget for the Corgi insurance advisor. */
 export function corgiWidget(publicUrl: string, runId: string): string {
-  const prompt = corgiConnectPrompt(publicUrl);
+  const prompt = corgiCopyPrompt(publicUrl);
   const markup = widgetMarkup(publicUrl, runId);
   return `
 <link rel="alternate" type="text/plain" href="/llms.txt" title="How a peer agent should connect"/>

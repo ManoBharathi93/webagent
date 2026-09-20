@@ -10,6 +10,7 @@ import {
   quoteGuideTool,
   corgiAgentCard,
   corgiConnectPrompt,
+  corgiCopyPrompt,
   corgiHost,
   Sessions,
   speedCorgiHtml,
@@ -179,6 +180,12 @@ describe("corgi agent card", () => {
     expect(prompt).toContain("s123");
     expect(prompt).toContain("Stay in this conversation");
   });
+
+  test("copy prompt is a one-liner to talk to Corgi", () => {
+    const prompt = corgiCopyPrompt("https://corgi.test");
+    expect(prompt).toBe("Go talk to the Corgi agent at https://corgi.test and figure out.");
+    expect(prompt.includes("\n")).toBe(false);
+  });
 });
 
 describe("corgi host routing", () => {
@@ -216,6 +223,8 @@ describe("corgi host routing", () => {
     expect(html).toContain("#e1e1e1");
     expect(html).toContain("Ask Corgi");
     expect(html).toContain("lastText");
+    expect(html).toContain("Go talk to the Corgi agent");
+    expect(html).not.toContain("You reached Corgi");
   });
 
   test("machine GET / returns agent card JSON", async () => {

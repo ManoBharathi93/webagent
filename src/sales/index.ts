@@ -1,5 +1,5 @@
 export { attachSales, riskTool, quoteGuideTool } from "./attach.ts";
-export { corgiAgentCard, corgiConnectPrompt } from "./card.ts";
+export { corgiAgentCard, corgiConnectPrompt, corgiCopyPrompt } from "./card.ts";
 export { runGepa, scorePrompt, onFront, type GoalScore, type PromptCand } from "./gepa.ts";
 export { corgiHost } from "./host.ts";
 export { corgiChatPage } from "./page.ts";

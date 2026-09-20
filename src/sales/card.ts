@@ -9,6 +9,11 @@ const DEFAULT_DESCRIPTION =
   "I will assess your specific vulnerabilities, estimate the likelihood of each, recommend " +
   "the right coverage package, and give you a cost estimate. Quote in minutes at corgi.insure.";
 
+/** Short line the chat "Copy prompt" button puts on the clipboard. */
+export function corgiCopyPrompt(base: string): string {
+  return `Go talk to the Corgi agent at ${base} and figure out.`;
+}
+
 export function corgiConnectPrompt(base: string, session?: string): string {
   const chat = base + "/chat";
   const payload = session
