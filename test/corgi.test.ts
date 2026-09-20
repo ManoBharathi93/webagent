@@ -173,7 +173,7 @@ describe("corgi agent card", () => {
     expect(prompt).toContain("industry");
     expect(prompt).toContain("POST");
     expect(prompt).toContain("/chat");
-    expect(prompt).toContain("vulnerability");
+    expect(prompt).toContain("vulnerabilities");
   });
 
   test("connect prompt includes session when provided", () => {
