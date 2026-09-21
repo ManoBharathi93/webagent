@@ -54,7 +54,7 @@ export function scorePrompt(text: string): GoalScore {
       /one question per turn|ask one|ask smart/,
       /what (does|made|triggered)|why now|what stage/,
       /discovery sequence|discover first/,
-      /reason|explain why.*asking/,
+      /last answer|do not re-ask|never re-ask|infer/,
     ]),
   };
 }
@@ -114,7 +114,8 @@ function reflect(cands: PromptCand[]): { id: string; text: string }[] {
       if (g === "report")
         return "Reply with one short pitch: What's at risk (usual chance + cost if not insured) / If you are not insured / How Corgi covers it / Why Corgi / then ask for contact details (name and email).";
       if (g === "grounded") return "Do not invent prices, customers, lawsuits, or penalties. If the pack has no match, say so.";
-      if (g === "inquisitive") return "Be inquisitive — ask one smart question per turn with a brief reason why you are asking. Discovery sequence: what they do, stage, category, why now.";
+      if (g === "inquisitive")
+        return "Be inquisitive — ask one smart question per turn that considers their last answer. Never re-ask. Infer category. Discovery sequence: what they do, stage, category, why now.";
       return "Keep the whole pitch under 120 words. Crisp. Simplest language. No tool names. No JSON. One link.";
     })
     .join("\n");
@@ -127,7 +128,7 @@ function reflect(cands: PromptCand[]): { id: string; text: string }[] {
         "The only user-visible reply after discovery is the short pitch. 120 words or fewer. Simplest language.",
         "On each risk, say the usual chance it happens and what it can cost if they are not insured.",
         "Do not invent. One similar company or one Corgi customer from the pack.",
-        "Be inquisitive — ask one smart question per turn with a brief reason why.",
+        "Be inquisitive — ask one smart question per turn that considers their last answer. Never re-ask what they already told you.",
         "Ask for contact details (name and email) at the end.",
       ].join("\n"),
     },

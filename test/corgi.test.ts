@@ -18,6 +18,7 @@ import {
 import { Room } from "../src/host/room.ts";
 import { scorePrompt } from "../src/sales/gepa.ts";
 import { SALES_V2 } from "../src/sales/seeds.ts";
+import { extractKnown, knownPin } from "../src/sales/known.ts";
 
 function corgiCrawl(): CrawlState {
   return {
@@ -303,6 +304,9 @@ describe("corgi host routing", () => {
     );
     const secondBody = (await second.json()) as any;
     expect(secondBody.runId).toBe(firstBody.runId);
+    const chatRoom = sessions.get("corgi-test-1")!;
+    const pin = chatRoom.run.getContext().filter((m) => m.role === "pin").pop()?.content ?? "";
+    expect(pin.toLowerCase()).toContain("do not re-ask");
   });
 
   test("GET /agent.json returns card", async () => {
@@ -358,6 +362,40 @@ describe("corgi host routing", () => {
   });
 });
 
+describe("known facts from the thread", () => {
+  test("seed SaaS chip fills product, stage, category and is ready for map_risks", () => {
+    const k = extractKnown([
+      { role: "user", content: "We are a seed-stage SaaS startup building B2B analytics" },
+    ]);
+    expect(k.stage).toBe("seed");
+    expect(k.category).toBe("SaaS");
+    expect(k.does).toMatch(/B2B analytics/i);
+    expect(k.readyForRisks).toBe(true);
+    const pin = knownPin([{ role: "user", content: "We are a seed-stage SaaS startup building B2B analytics" }]);
+    expect(pin).toContain("Call map_risks this turn");
+    expect(pin).toContain("do not re-ask");
+  });
+
+  test("does not forget first-turn facts on a follow-up", () => {
+    const k = extractKnown([
+      { role: "user", content: "[human] We are a seed-stage SaaS startup building B2B analytics" },
+      { role: "assistant", content: "What made insurance come up?" },
+      { role: "user", content: "[human] An enterprise customer asked for a COI." },
+    ]);
+    expect(k.category).toBe("SaaS");
+    expect(k.stage).toBe("seed");
+    expect(k.whyNow).toMatch(/COI/i);
+    expect(k.readyForRisks).toBe(true);
+  });
+
+  test("infers AI from LLM agents", () => {
+    const k = extractKnown([{ role: "user", content: "We are an AI startup building LLM agents, just raised our seed round" }]);
+    expect(k.category).toBe("AI");
+    expect(k.stage).toBe("seed");
+    expect(k.readyForRisks).toBe(true);
+  });
+});
+
 describe("sales prompt GEPA scoring", () => {
   test("v2 prompt scores high on inquisitive goal", () => {
     const score = scorePrompt(SALES_V2);
@@ -370,7 +408,8 @@ describe("sales prompt GEPA scoring", () => {
     expect(SALES_V2.toLowerCase()).toContain("how corgi will insure");
     expect(SALES_V2.toLowerCase()).toContain("not insured");
     expect(SALES_V2.toLowerCase()).toContain("probability");
-    expect(score.penalty).toBeGreaterThan(0.5);
+    expect(SALES_V2.toLowerCase()).toContain("never re-ask");
+    expect(SALES_V2.toLowerCase()).toContain("last answer");
   });
 });
 

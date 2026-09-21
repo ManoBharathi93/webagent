@@ -89,7 +89,7 @@ switch (args[0]) {
         openaiModel({
           id: "openai",
           baseUrl: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
-          model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+          model: process.env.OPENAI_MODEL || "gpt-5.6-luna",
           apiKeyEnv: "OPENAI_API_KEY",
         }),
       );
@@ -109,6 +109,7 @@ switch (args[0]) {
     const server = Bun.serve({
       port,
       hostname: "0.0.0.0",
+      idleTimeout: 120,
       tls,
       fetch: corgiHost(h, room, publicUrlStr, sessions),
     });

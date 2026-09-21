@@ -11,6 +11,7 @@ import { Sessions } from "./sessions.ts";
 import { corgiAgentCard, corgiConnectPrompt } from "./card.ts";
 import { corgiChatPage } from "./page.ts";
 import { corgiSiteResponse } from "./site.ts";
+import { knownPin } from "./known.ts";
 
 const CARD_PATHS = new Set([
   "/agent.json",
@@ -122,6 +123,7 @@ async function route(
       session?: string;
     };
     const hit = sessions.open(readSessionId(req, body.session));
+    pinKnown(hit.room, body.text ?? "");
     const ex = await hit.room.say(chatFrom(req, body), body.text ?? "");
     return withSession(Response.json({ ...ex, session: hit.id, runId: hit.room.run.id }), hit.id);
   }
@@ -149,6 +151,7 @@ async function route(
       }
       if (body.text) {
         const hit = sessions.open(readSessionId(req, body.session));
+        pinKnown(hit.room, body.text);
         const ex = await hit.room.say("machine", body.text);
         return withSession(Response.json({ ...ex, session: hit.id, runId: hit.room.run.id }), hit.id);
       }
@@ -158,6 +161,11 @@ async function route(
   }
 
   return api(req);
+}
+
+function pinKnown(room: Room, upcoming: string): void {
+  const msgs = [...room.run.getContext(), { role: "user" as const, content: upcoming }];
+  room.run.inject({ vars: knownPin(msgs) });
 }
 
 function existingSession(req: Request, sessions: Sessions): string | null {
