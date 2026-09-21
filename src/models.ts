@@ -103,7 +103,8 @@ export function openaiModel(opts: { id: string; baseUrl: string; model: string; 
       if (key) headers.Authorization = "Bearer " + key;
       const body: Record<string, unknown> = { model: opts.model, messages: toOpenAI(req.messages) };
       if (/gpt-5/i.test(opts.model)) {
-        body.reasoning_effort = process.env.OPENAI_REASONING_EFFORT || "low";
+        // gpt-5.6-luna rejects function tools in chat/completions unless effort is none.
+        body.reasoning_effort = process.env.OPENAI_REASONING_EFFORT || "none";
       }
       if (req.tools.length) {
         body.tools = req.tools.map((t) => ({
