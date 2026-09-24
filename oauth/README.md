@@ -67,7 +67,12 @@ Do not log callback query strings, authorization redirect URLs, cookies, client
 secrets, or token responses in the host or reverse proxy. Handler responses disable
 caching and referrer transmission. Pending attempts expire after five minutes;
 process restart loses them. Failed exchanges are not retried: start consent again.
-Only the newest attempt for a given callback in one browser can finish.
+Only the newest attempt for a given callback in one browser can finish. Starting
+again with its binding cookie removes that identity's superseded attempt. Pending
+consent is limited to eight attempts per tenant/user and 1024 per Flow; additional
+attempts receive HTTP 429 until capacity is released or attempts expire. Dropping
+cookies does not bypass the per-identity limit. The host should additionally rate
+limit requests according to its own account and tenant admission policy.
 
 ## Personal MCP tools
 
@@ -113,12 +118,15 @@ fails, the connection is blocked in this Flow until consent/disconnect succeeds;
 the block is in memory, so the host must resolve storage failures before restarting.
 
 The authenticated same-origin POST disconnect handler deletes credentials and
-cancels pending consent attempts. It waits for an active refresh/callback mutation
-to finish, preventing late writes from restoring access after successful deletion.
+cancels pending consent attempts. It waits for an admitted Start or active
+refresh/callback mutation to finish, preventing late writes from restoring access
+after successful deletion.
 Already-sent MCP calls may finish. Disconnect does not revoke the provider-side grant.
 Use one Flow per binding/store; bypassing it with direct store writes or additional
 Flow instances forfeits coordination. A fixed set of lock stripes bounds lock memory;
 unrelated identities that hash to the same stripe may briefly wait for each other.
+Start is admitted when it acquires the lifecycle lock. Disconnect cancels starts
+ordered before it; a new Start admitted after disconnect can begin fresh consent.
 
 The lower-level `NewMCPToolSource(binding, store)` remains available for hosts with
 their own lifecycle management. It does not refresh; changing the access token

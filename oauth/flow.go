@@ -22,8 +22,9 @@ import (
 )
 
 const (
-	attemptLifetime = 5 * time.Minute
-	maxAttempts     = 1024
+	attemptLifetime        = 5 * time.Minute
+	maxAttempts            = 1024
+	maxAttemptsPerIdentity = 8
 )
 
 // FlowConfig configures one preregistered OAuth client and integration. Scopes are
@@ -53,11 +54,12 @@ type authorizationAttempt struct {
 // Start requires a same-origin POST; Callback accepts a query-mode GET.
 // Do not log callback queries, authorization URLs, cookies, or token responses.
 //
-// Pending attempts are held in memory for five minutes, capped at 1024, and consumed
-// once before exchange. Restarting requires starting consent again. Use one shared
-// instance per integration in a single process. ToolSource, Callback and Disconnect
-// share lifecycle coordination; distributed coordination is not provided. Only the latest attempt in a
-// browser for this callback can finish, because Start replaces its binding cookie.
+// Pending attempts are held in memory for five minutes, capped at eight per
+// tenant/user and 1024 overall, and consumed once before exchange. Restarting
+// requires starting consent again. Use one shared instance per integration in a
+// single process. Start, ToolSource, Callback and Disconnect share lifecycle
+// coordination; distributed coordination is not provided. Starting again in the
+// same browser replaces that identity's previous attempt and binding cookie.
 type Flow struct {
 	cfg        FlowConfig
 	metadata   mcp.AuthorizationMetadata
@@ -215,6 +217,15 @@ func (f *Flow) Start(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Same-origin request required", http.StatusForbidden)
 		return
 	}
+	// Admit consent under the same lock as callback persistence and disconnect.
+	// A disconnect ordered after this Start must remove its pending attempt, even
+	// when Start is still generating randomness or sending the browser redirect.
+	unlock, err := f.lockConnection(r.Context())
+	if err != nil {
+		http.Error(w, "Connection request canceled", http.StatusRequestTimeout)
+		return
+	}
+	defer unlock()
 	state, err1 := randomValue()
 	verifier, err2 := randomValue()
 	browser, err3 := randomValue()
@@ -223,14 +234,25 @@ func (f *Flow) Start(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	identity, _ := core.IdentityFromContext(r.Context())
+	previous, cookieErr := r.Cookie(f.cookieName)
+	var previousHash [32]byte
+	replacePrevious := cookieErr == nil && len(previous.Value) == 43
+	if replacePrevious {
+		previousHash = sha256.Sum256([]byte(previous.Value))
+	}
 	now := time.Now()
 	f.mu.Lock()
+	ownedAttempts := 0
 	for key, attempt := range f.pending {
-		if !now.Before(attempt.expires) {
+		if !now.Before(attempt.expires) || (attempt.identity == identity && replacePrevious && subtle.ConstantTimeCompare(attempt.browserHash[:], previousHash[:]) == 1) {
 			delete(f.pending, key)
+			continue
+		}
+		if attempt.identity == identity {
+			ownedAttempts++
 		}
 	}
-	if len(f.pending) >= maxAttempts {
+	if ownedAttempts >= maxAttemptsPerIdentity || len(f.pending) >= maxAttempts {
 		f.mu.Unlock()
 		http.Error(w, "Too many pending connections", http.StatusTooManyRequests)
 		return

@@ -1,5 +1,5 @@
-Commit: 3d6852a8da5002f00edd396097f76879be09bff4
-Captured: 2026-09-24 03:11:59 UTC
+Commit: 28d60a38f132e978c457bd6f43cd611fbaf2b187
+Captured: 2026-09-24 03:20:11 UTC
 Linux command: sh /src/bin/oauth-validation/check.sh (golang:1.23)
 set -eu
 go version
@@ -9,43 +9,53 @@ go test -race -coverprofile=/reports/coverage.out ./...
 
 Exit code: 0
 go version go1.23.12 linux/amd64
-ok  	github.com/TheAgent-net/webagent/action	1.052s	coverage: 73.7% of statements
-ok  	github.com/TheAgent-net/webagent/brain	1.055s	coverage: 63.0% of statements
-	github.com/TheAgent-net/webagent/cmd/webagent		coverage: 0.0% of statements
+ok  	github.com/TheAgent-net/webagent/action	1.077s	coverage: 73.7% of statements
+ok  	github.com/TheAgent-net/webagent/brain	1.063s	coverage: 63.0% of statements
 	github.com/TheAgent-net/webagent/conformance		coverage: 0.0% of statements
-ok  	github.com/TheAgent-net/webagent/build	1.080s	coverage: 72.0% of statements
-ok  	github.com/TheAgent-net/webagent/channels	1.421s	coverage: 74.1% of statements
-ok  	github.com/TheAgent-net/webagent/core	1.085s	coverage: 87.5% of statements
-ok  	github.com/TheAgent-net/webagent/eval	1.028s	coverage: 90.2% of statements
-ok  	github.com/TheAgent-net/webagent/guardrail	1.031s	coverage: 78.6% of statements
-ok  	github.com/TheAgent-net/webagent/internal/mcp	1.432s	coverage: 82.6% of statements
-ok  	github.com/TheAgent-net/webagent/memory	1.027s	coverage: 95.8% of statements
-ok  	github.com/TheAgent-net/webagent/oauth	3.768s	coverage: 85.9% of statements
-ok  	github.com/TheAgent-net/webagent/observability	1.032s	coverage: 82.8% of statements
-ok  	github.com/TheAgent-net/webagent/present	1.030s	coverage: 80.0% of statements
-ok  	github.com/TheAgent-net/webagent/retrieval	1.030s	coverage: 61.8% of statements
-ok  	github.com/TheAgent-net/webagent/secrets	1.024s	coverage: 85.9% of statements
-ok  	github.com/TheAgent-net/webagent/spec	1.032s	coverage: 84.2% of statements
-ok  	github.com/TheAgent-net/webagent/spi	1.028s	coverage: 95.0% of statements
+	github.com/TheAgent-net/webagent/cmd/webagent		coverage: 0.0% of statements
+ok  	github.com/TheAgent-net/webagent/build	1.153s	coverage: 72.0% of statements
+ok  	github.com/TheAgent-net/webagent/channels	1.423s	coverage: 74.1% of statements
+ok  	github.com/TheAgent-net/webagent/core	1.082s	coverage: 87.5% of statements
+ok  	github.com/TheAgent-net/webagent/eval	1.030s	coverage: 90.2% of statements
+ok  	github.com/TheAgent-net/webagent/guardrail	1.038s	coverage: 78.6% of statements
+ok  	github.com/TheAgent-net/webagent/internal/mcp	1.541s	coverage: 82.6% of statements
+ok  	github.com/TheAgent-net/webagent/memory	1.029s	coverage: 95.8% of statements
+ok  	github.com/TheAgent-net/webagent/oauth	3.740s	coverage: 86.7% of statements
+ok  	github.com/TheAgent-net/webagent/observability	1.027s	coverage: 82.8% of statements
+ok  	github.com/TheAgent-net/webagent/present	1.048s	coverage: 80.0% of statements
+ok  	github.com/TheAgent-net/webagent/retrieval	1.023s	coverage: 61.8% of statements
+ok  	github.com/TheAgent-net/webagent/secrets	1.038s	coverage: 85.9% of statements
+ok  	github.com/TheAgent-net/webagent/spec	1.070s	coverage: 84.2% of statements
+ok  	github.com/TheAgent-net/webagent/spi	1.024s	coverage: 95.0% of statements
 
 Lint command: golangci-lint run --timeout=5m
 Exit code: 0
 0 issues.
 
-Windows command: go test ./oauth -run 'TestFlowConsentPersistsTokens|TestConsentToPersonalToolExecution|^TestLifecycle' -v -count=1
+Windows command: go test ./oauth -run 'TestFlowConsent|TestConsentToPersonalToolExecution|^TestLifecycle|TestFlowConcurrentStarts|TestFlowStart' -v -count=1
 Exit code: 0
+=== RUN   TestFlowConsentQuotaIsolatesIdentities
+--- PASS: TestFlowConsentQuotaIsolatesIdentities (0.04s)
+=== RUN   TestFlowConcurrentStartsRespectIdentityQuota
+--- PASS: TestFlowConcurrentStartsRespectIdentityQuota (0.01s)
+=== RUN   TestFlowStartReplacesBrowserAttempt
+--- PASS: TestFlowStartReplacesBrowserAttempt (0.11s)
+=== RUN   TestLifecycleDisconnectWaitsForStart
+--- PASS: TestLifecycleDisconnectWaitsForStart (0.06s)
+=== RUN   TestFlowStartLockCancellationCreatesNoAttempt
+--- PASS: TestFlowStartLockCancellationCreatesNoAttempt (0.03s)
 === RUN   TestFlowConsentPersistsTokens
 === RUN   TestFlowConsentPersistsTokens/none
 === RUN   TestFlowConsentPersistsTokens/client_secret_basic
 --- PASS: TestFlowConsentPersistsTokens (0.06s)
-    --- PASS: TestFlowConsentPersistsTokens/none (0.04s)
-    --- PASS: TestFlowConsentPersistsTokens/client_secret_basic (0.02s)
+    --- PASS: TestFlowConsentPersistsTokens/none (0.03s)
+    --- PASS: TestFlowConsentPersistsTokens/client_secret_basic (0.03s)
 === RUN   TestLifecycleConcurrentRefreshRotatesOnce
 === RUN   TestLifecycleConcurrentRefreshRotatesOnce/none
 === RUN   TestLifecycleConcurrentRefreshRotatesOnce/client_secret_basic
---- PASS: TestLifecycleConcurrentRefreshRotatesOnce (0.07s)
-    --- PASS: TestLifecycleConcurrentRefreshRotatesOnce/none (0.03s)
-    --- PASS: TestLifecycleConcurrentRefreshRotatesOnce/client_secret_basic (0.03s)
+--- PASS: TestLifecycleConcurrentRefreshRotatesOnce (0.10s)
+    --- PASS: TestLifecycleConcurrentRefreshRotatesOnce/none (0.05s)
+    --- PASS: TestLifecycleConcurrentRefreshRotatesOnce/client_secret_basic (0.05s)
 === RUN   TestLifecyclePreservesOmittedRefreshToken
 --- PASS: TestLifecyclePreservesOmittedRefreshToken (0.03s)
 === RUN   TestLifecycleFailedRefreshRequiresReconnect
@@ -54,35 +64,35 @@ Exit code: 0
 === RUN   TestLifecycleFailedRefreshRequiresReconnect/scope_expansion
 === RUN   TestLifecycleFailedRefreshRequiresReconnect/storage_failure
 === RUN   TestLifecycleFailedRefreshRequiresReconnect/canceled
---- PASS: TestLifecycleFailedRefreshRequiresReconnect (0.10s)
+--- PASS: TestLifecycleFailedRefreshRequiresReconnect (0.11s)
     --- PASS: TestLifecycleFailedRefreshRequiresReconnect/invalid_grant (0.02s)
     --- PASS: TestLifecycleFailedRefreshRequiresReconnect/server_failure (0.02s)
     --- PASS: TestLifecycleFailedRefreshRequiresReconnect/scope_expansion (0.02s)
     --- PASS: TestLifecycleFailedRefreshRequiresReconnect/storage_failure (0.02s)
     --- PASS: TestLifecycleFailedRefreshRequiresReconnect/canceled (0.02s)
 === RUN   TestLifecycleDisconnectWaitsForRefreshAndCancelsConsent
---- PASS: TestLifecycleDisconnectWaitsForRefreshAndCancelsConsent (0.05s)
+--- PASS: TestLifecycleDisconnectWaitsForRefreshAndCancelsConsent (0.04s)
 === RUN   TestLifecycleRuntimeRefreshAndReconnectInvalidateOldTools
---- PASS: TestLifecycleRuntimeRefreshAndReconnectInvalidateOldTools (0.07s)
+--- PASS: TestLifecycleRuntimeRefreshAndReconnectInvalidateOldTools (0.08s)
 === RUN   TestLifecycleDisconnectHTTPRequiresIdentityAndOrigin
 === RUN   TestLifecycleDisconnectHTTPRequiresIdentityAndOrigin/get
 === RUN   TestLifecycleDisconnectHTTPRequiresIdentityAndOrigin/anonymous
 === RUN   TestLifecycleDisconnectHTTPRequiresIdentityAndOrigin/foreign_origin
 === RUN   TestLifecycleDisconnectHTTPRequiresIdentityAndOrigin/valid
 --- PASS: TestLifecycleDisconnectHTTPRequiresIdentityAndOrigin (0.06s)
-    --- PASS: TestLifecycleDisconnectHTTPRequiresIdentityAndOrigin/get (0.01s)
+    --- PASS: TestLifecycleDisconnectHTTPRequiresIdentityAndOrigin/get (0.02s)
     --- PASS: TestLifecycleDisconnectHTTPRequiresIdentityAndOrigin/anonymous (0.02s)
     --- PASS: TestLifecycleDisconnectHTTPRequiresIdentityAndOrigin/foreign_origin (0.02s)
-    --- PASS: TestLifecycleDisconnectHTTPRequiresIdentityAndOrigin/valid (0.01s)
+    --- PASS: TestLifecycleDisconnectHTTPRequiresIdentityAndOrigin/valid (0.02s)
 === RUN   TestLifecycleLockHonorsCancellation
---- PASS: TestLifecycleLockHonorsCancellation (0.00s)
+--- PASS: TestLifecycleLockHonorsCancellation (0.01s)
 === RUN   TestLifecycleStorageCleanupFailureBlocksFurtherRefresh
 --- PASS: TestLifecycleStorageCleanupFailureBlocksFurtherRefresh (0.02s)
 === RUN   TestLifecycleDisconnectWaitsForCallback
---- PASS: TestLifecycleDisconnectWaitsForCallback (0.02s)
+--- PASS: TestLifecycleDisconnectWaitsForCallback (0.04s)
 === RUN   TestLifecycleReconnectSameTokenStillInvalidatesSession
---- PASS: TestLifecycleReconnectSameTokenStillInvalidatesSession (0.04s)
+--- PASS: TestLifecycleReconnectSameTokenStillInvalidatesSession (0.06s)
 === RUN   TestConsentToPersonalToolExecution
---- PASS: TestConsentToPersonalToolExecution (0.03s)
+--- PASS: TestConsentToPersonalToolExecution (0.04s)
 PASS
-ok  	github.com/TheAgent-net/webagent/oauth	0.803s
+ok  	github.com/TheAgent-net/webagent/oauth	1.747s
