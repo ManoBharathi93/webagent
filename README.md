@@ -82,8 +82,13 @@ agent (each guarded):
 ```
 
 `validate`/`serve` perform the MCP handshake at build time, so `validate` reports the real tool
-count. Streamable HTTP (JSON and SSE) and bearer/api-key auth are supported; OAuth-gated servers
-are a follow-up.
+count. Streamable HTTP (JSON and SSE) and bearer/api-key auth are supported.
+
+For per-user OAuth, authenticated embedding hosts can use [`oauth`](oauth/README.md):
+approved-issuer discovery, code/PKCE consent, encrypted connections, refresh and local
+disconnect, and `build.WithToolSource` for guarded tools resolved per turn. The host
+provides login and verified tenant/user identity; the built-in CLI/web channel does
+not automatically mount these routes. Existing static MCP configurations are unchanged.
 
 ## Reach your customers: Slack and WhatsApp
 
