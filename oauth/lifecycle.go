@@ -125,9 +125,10 @@ func (f *Flow) setBlocked(ctx context.Context, blocked bool) {
 }
 
 // DisconnectConnection deletes local credentials and cancels outstanding consent
-// attempts for this identity. It waits for refresh/callback mutations to finish, so
-// they cannot restore the record after a successful disconnect. Already-sent MCP
-// calls may finish. This is local disconnect, not issuer-side token revocation.
+// attempts for this identity. It waits for admitted Start, refresh and callback
+// operations to finish, so they cannot restore the record after a successful
+// disconnect. Already-sent MCP calls may finish. This is local disconnect, not
+// issuer-side token revocation.
 func (f *Flow) DisconnectConnection(ctx context.Context) error {
 	unlock, err := f.lockConnection(ctx)
 	if err != nil {

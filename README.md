@@ -146,7 +146,8 @@ Complete and green (build/vet/test):
 
 **Works today:** echo/openrouter/gateway brains; `mcp` over Streamable HTTP (JSON + SSE,
 bearer/api-key); HTTP `a2a`/`web` channels; live Slack + WhatsApp; secrets vault (env/file/static);
-GuardAll; TurnTrace; `keys` CLI.
+GuardAll; TurnTrace; `keys` CLI; per-user [MCP OAuth](oauth/README.md) for authenticated
+embedding hosts (host-provided login and consent routes).
 
-**Not yet:** browser action provider; OAuth-gated MCP; OTel exporter; Telegram adapter; partner
+**Not yet:** browser action provider; built-in OAuth Connect UI; OTel exporter; Telegram adapter; partner
 memory/guardrail adapters; AgentNet identity forwarding + billing. See [DESIGN.md](DESIGN.md).
